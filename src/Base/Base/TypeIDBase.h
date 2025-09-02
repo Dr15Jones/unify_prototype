@@ -21,6 +21,7 @@
 
 // system include files
 #include <typeinfo>
+#include <compare>
 
 // user include files
 
@@ -41,10 +42,19 @@ namespace edm {
     /** Returned C-style string owned by system; do not delete[] it.
          This is the (horrible, mangled, platform-dependent) name of
          the type. */
-    const char* name() const { return t_->name(); }
+    constexpr const char* name() const noexcept { return t_->name(); }
 
-    bool operator<(const TypeIDBase& b) const { return t_->before(*(b.t_)); }
-    bool operator==(const TypeIDBase& b) const { return (*t_) == *(b.t_); }
+    constexpr std::strong_ordering operator<=>(const TypeIDBase& b) const noexcept {
+      if (*t_ == *b.t_) {
+        return std::strong_ordering::equivalent;  // same type
+      }
+      if (t_->before(*(b.t_))) {
+        return std::strong_ordering::less;  // this is less than b
+      }
+      return std::strong_ordering::greater;  // this is greater than b
+    }
+    constexpr bool operator==(const TypeIDBase& b) const noexcept { return *t_ == *b.t_; }
+    constexpr bool operator!=(const TypeIDBase& b) const noexcept { return *t_ != *b.t_; }
 
   protected:
     constexpr const std::type_info& typeInfo() const { return *t_; }
@@ -58,10 +68,6 @@ namespace edm {
     //  We also are using a pointer rather than a reference so that operator= will work
     const std::type_info* t_;
   };
-
-  inline bool operator>(const TypeIDBase& a, const TypeIDBase& b) { return b < a; }
-
-  inline bool operator!=(const TypeIDBase& a, const TypeIDBase& b) { return !(a == b); }
 
 }  // namespace edm
 
