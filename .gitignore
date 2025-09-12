@@ -1,5 +1,4 @@
 unify_prototype.code-workspace
-settings.json
-tasks.json
+.vscode/
 build/
-
+Testing/
