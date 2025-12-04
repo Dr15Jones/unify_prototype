@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
+add_subdirectory(ControlFlow)
+#add_subdirectory(TransitionHandling)
 add_subdirectory(ProductHandling)
 add_subdirectory(DataModel)
 add_subdirectory(DataProductBase)
