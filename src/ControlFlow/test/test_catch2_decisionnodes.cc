@@ -6,7 +6,7 @@
 #include "Concurrency/WaitingTask.h"
 #include "Concurrency/FinalWaitingTask.h"
 #include "Concurrency/WaitingTaskHolder.h"
-#include "DataModel/TransitionContext.h"
+#include "ProductHandling/TransitionContext.h"
 #include "ControlFlow/StartDecisionGraph.h"
 #include "ControlFlow/AndDecisionNode.h"
 #include "ControlFlow/OrDecisionNode.h"
