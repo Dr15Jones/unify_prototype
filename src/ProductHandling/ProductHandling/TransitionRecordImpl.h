@@ -3,9 +3,8 @@
 
 #include "DataModel/ProductKey.h"
 #include "DataModel/TransitionRecordKey.h"
-#include "DataModel/ProductResolverIndex.h"
-#include "ProductHandling/ProductResolverBase.h"
-#include "ProductHandling/ProductResolverIndexHelper.h"
+#include "DataModel/ProductTransitionRecordIndex.h"
+#include "DataProductBase/WrapperBase.h"
 
 #include <memory>
 #include <vector>
@@ -17,28 +16,22 @@ IFF the TransitionRecords do not strictly form a hierarchy.
 Q: Should the transition record hold connections to the TransitionRecordImpl for which it is a dependency?
 */
 namespace edm {
+  class ProductTransitionRecordIndexHelper;
   class TransitionRecordImpl {
   public:
     TransitionRecordImpl(TransitionRecordKey key,
-                         std::shared_ptr<ProductResolverIndexHelper> iHelper,
-                         std::vector<std::unique_ptr<ProductResolverBase>> iResolvers,
-                         unsigned int replicationIndex)
-        : key_(key), resolvers_(std::move(iResolvers)), helper_(iHelper), replicationIndex_(replicationIndex) {
-      assert(helper_);
-    }
+                         std::shared_ptr<ProductTransitionRecordIndexHelper> iHelper,
+                         unsigned int replicationIndex);
 
-    void prefetchAsync(WaitingTaskHolder waitTask,
-                       ProductResolverIndex index,
-                       TransitionContext const& context) const noexcept;
-
-    ProductResolverBase const* get(ProductResolverIndex index) const {
+    WrapperBase const* get(ProductTransitionRecordIndex index) const {
       if (index.isUninitialized()) {
         return nullptr;
       }
-      return resolvers_[index.value()].get();
+      assert(index.value() < wrappers_.size());
+      return wrappers_[index.value()].get();
     }
 
-    ProductResolverIndexHelper const& helper() const { return *helper_; }
+    ProductTransitionRecordIndexHelper const& helper() const { return *helper_; }
 
     TransitionRecordKey const& key() const { return key_; }
 
@@ -59,8 +52,8 @@ namespace edm {
 
   private:
     TransitionRecordKey key_;
-    std::vector<std::unique_ptr<ProductResolverBase>> resolvers_;
-    std::shared_ptr<ProductResolverIndexHelper> helper_;
+    std::vector<std::unique_ptr<WrapperBase>> wrappers_;
+    std::shared_ptr<ProductTransitionRecordIndexHelper> helper_;
     unsigned long long cacheIdentifier_ = 0;  // Initialized to 0 to indicate uninitialized state
     unsigned int replicationIndex_ = 0;       // Initialized to 0, can be set later if needed
   };

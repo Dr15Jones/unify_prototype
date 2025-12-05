@@ -11,19 +11,19 @@
 #include <vector>
 
 namespace edm {
-  class ProductResolversProvider;
+  class ProductsProvider;
   class TransitionRecordProvider {
   public:
     TransitionRecordProvider() = delete;
     explicit TransitionRecordProvider(TransitionRecordKey key,
-                                      std::shared_ptr<ProductResolverIndexHelper>,
+                                      std::shared_ptr<ProductTransitionRecordIndexHelper>,
                                       unsigned int allowedConcurrency);
 
-    void addResolversFrom(ProductResolversProvider& provider);
+    void addResolversFrom(ProductsProvider& provider);
 
     TransitionRecordKey const& key() const { return key_; }
   private:
-    std::shared_ptr<ProductResolverIndexHelper> helper_;
+    std::shared_ptr<ProductTransitionRecordIndexHelper> helper_;
     std::vector<std::unique_ptr<TransitionRecordImpl>> records_;
     TransitionRecordKey key_;
     unsigned int allowedConcurrency_;

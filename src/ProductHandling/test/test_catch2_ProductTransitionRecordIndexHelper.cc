@@ -1,14 +1,14 @@
 #include <catch2/catch.hpp>
-#include "ProductHandling/ProductResolverIndexHelper.h"
-#include "ProductHandling/ProductResolverIndexHelpersBuilder.h"
-#include "ProductHandling/ProductResolversProvider.h"
+#include "ProductHandling/ProductTransitionRecordIndexHelper.h"
+#include "ProductHandling/ProductTransitionRecordIndexHelpersBuilder.h"
+#include "ProductHandling/ProductsProvider.h"
 
 namespace prihtest {
   struct DummyRecord {};
   struct DummyProduct {};
 
-  // Mock ProductResolversProvider
-  class MockProductResolversProvider : public edm::ProductResolversProvider {
+  // Mock ProductsProvider
+  class MockProductsProvider : public edm::ProductsProvider {
   public:
     void addProductKey(edm::ProductKey key) { keys_.emplace_back(std::move(key)); }
 
@@ -19,11 +19,6 @@ namespace prihtest {
       return {edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess")};
     }
 
-    std::unique_ptr<edm::ProductResolverBase> makeResolver(edm::TransitionRecordKey const&,
-                                                           edm::ProductKey const&) const override {
-      return nullptr;  // Mock implementation
-    }
-
   private:
     std::vector<edm::ProductKey> keys_;
   };
@@ -31,12 +26,12 @@ namespace prihtest {
 }  // namespace prihtest
 
 using namespace prihtest;
-TEST_CASE("ProductResolverIndexHelpersBuilder", "[ProductResolverIndexHelpersBuilder]") {
+TEST_CASE("ProductTransitionRecordIndexHelpersBuilder", "[ProductTransitionRecordIndexHelpersBuilder]") {
   SECTION("Determine Products from Provider") {
-    MockProductResolversProvider provider;  // Assume this is properly implemented
+    MockProductsProvider provider;  // Assume this is properly implemented
     provider.addProductKey(
         edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess"));
-    edm::ProductResolverIndexHelpersBuilder builder;
+    edm::ProductTransitionRecordIndexHelpersBuilder builder;
 
     builder.determineProductsFrom(provider);
 
@@ -45,32 +40,32 @@ TEST_CASE("ProductResolverIndexHelpersBuilder", "[ProductResolverIndexHelpersBui
   }
   SECTION("Test no process filling") {
     SECTION("one from current") {
-      MockProductResolversProvider provider;  // Assume this is properly implemented
+      MockProductsProvider provider;  // Assume this is properly implemented
       auto prodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess");
       provider.addProductKey(prodKey);
-      edm::ProductResolverIndexHelpersBuilder builder;
+      edm::ProductTransitionRecordIndexHelpersBuilder builder;
 
       builder.determineProductsFrom(provider);
       builder.finalize({"dummyProcess"});
 
       auto helper = builder.helperFor(edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>());
-      CHECK(helper->getIndex(prodKey) == edm::ProductResolverIndex{0});
+      CHECK(helper->getIndex(prodKey) == edm::ProductTransitionRecordIndex{0});
       auto noprodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "");
-      CHECK(helper->getIndex(noprodKey) == edm::ProductResolverIndex{0});
+      CHECK(helper->getIndex(noprodKey) == edm::ProductTransitionRecordIndex{0});
     }
     SECTION("one from earlier") {
-      MockProductResolversProvider provider;  // Assume this is properly implemented
+      MockProductsProvider provider;  // Assume this is properly implemented
       auto prodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess");
       provider.addProductKey(prodKey);
-      edm::ProductResolverIndexHelpersBuilder builder;
+      edm::ProductTransitionRecordIndexHelpersBuilder builder;
 
       builder.determineProductsFrom(provider);
       builder.finalize({"current","dummyProcess"});
 
       auto helper = builder.helperFor(edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>());
-      CHECK(helper->getIndex(prodKey) == edm::ProductResolverIndex{0});
+      CHECK(helper->getIndex(prodKey) == edm::ProductTransitionRecordIndex{0});
       auto noprodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "");
-      CHECK(helper->getIndex(noprodKey) == edm::ProductResolverIndex{0});
+      CHECK(helper->getIndex(noprodKey) == edm::ProductTransitionRecordIndex{0});
     }
   }
 }
