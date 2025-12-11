@@ -16,7 +16,7 @@ namespace edm {
     ProductProviderBase() = default;
     virtual ~ProductProviderBase() = default;
 
-    virtual TransitionRecordKey recordForProducts() const = 0;
+    virtual TransitionRecordKey recordForProductsProvided() const = 0;
     virtual std::vector<ProductKey> productsProvided() const = 0;
 
     void addConsumer(ProductConsumerBase* iConsumer) { consumers_.push_back(iConsumer); }

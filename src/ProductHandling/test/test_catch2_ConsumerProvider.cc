@@ -12,7 +12,7 @@ namespace pcptest {
   // Mock ProductProvider
   class MockProductProvider : public edm::ProductProviderBase {
   public:
-    edm::TransitionRecordKey recordForProducts() const override {
+    edm::TransitionRecordKey recordForProductsProvided() const override {
       return edm::TransitionRecordKey::makeKey<pcptest::DummyRecord>();
     }
 
@@ -36,7 +36,7 @@ namespace pcptest {
     edm::TransitionRecordKey reactsToRecord() const override {
       return edm::TransitionRecordKey::makeKey<pcptest::DummyRecord>();
     }
-    std::vector<edm::TransitionRecordKey> recordsForProducts() const override {
+    std::vector<edm::TransitionRecordKey> recordForProductsConsumed() const override {
       return {edm::TransitionRecordKey::makeKey<pcptest::DummyRecord>()};
     }
     std::vector<edm::ProductKey> productsConsumed(edm::TransitionRecordKey const&) const override {

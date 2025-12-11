@@ -26,7 +26,7 @@ namespace edm {
     virtual std::optional<TransitionRecordKey> relatedStream() const;
 
     /// @brief All the records for which the consumer will consume products during the action
-    virtual std::vector<TransitionRecordKey> recordsForProducts() const = 0;
+    virtual std::vector<TransitionRecordKey> recordForProductsConsumed() const = 0;
     /// @brief The products consumed by this consumer from a given record
     virtual std::vector<ProductKey> productsConsumed(TransitionRecordKey const&) const = 0;
 
