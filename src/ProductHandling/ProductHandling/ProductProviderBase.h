@@ -26,8 +26,9 @@ namespace edm {
     /// @param context
     virtual void provideProductRequestAsync(WaitingTaskHolder task, TransitionContext& context) = 0;
 
+    virtual void resetProvider() {};
   protected:
-    /// @brief Call when products are available to notify consumers
+    /// @brief Call when products are available to notify consumers. This must be called once an only once per transition
     /// @param task
     /// @param context
     void notifyConsumersProductsAvailableAsync(WaitingTaskHolder task, TransitionContext& context);

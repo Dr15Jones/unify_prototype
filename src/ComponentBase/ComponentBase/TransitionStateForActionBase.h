@@ -21,10 +21,20 @@ namespace edm {
     //TransitionRecordKey recordForProductsProvided() const override = 0;
     //std::vector<ProductKey> productsProvided() const override = 0;
 
+    void resetForNewTransition() {
+      DecisionNodeBase::resetForNewTransition();
+      ProductConsumerBase::resetConsumerForNewTransition();
+      // ProductProviderBase has no state to reset
+      waitingConditionsToRun_.store(2, std::memory_order_release);
+      reset_();
+    }
+
   protected:
     /// @brief Must be called by derived classes when task started by workAsync is done
     /// @param result the result of the action
     void doneWorkAsync(WaitingTaskHolder task, TransitionContext& context, ActionResult result);
+
+    virtual void reset_() {};
 
   private:
     // ProductConsumerBase interface

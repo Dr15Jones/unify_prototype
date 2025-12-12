@@ -54,6 +54,8 @@ namespace edm {
           */
     unsigned long long cacheIdentifier() const { return cacheIdentifier_; }
 
+    void reset();
+
   private:
     TransitionRecordKey key_;
     std::vector<std::unique_ptr<WrapperBase>> wrappers_;

@@ -41,10 +41,13 @@ namespace edm {
     /// @param context
     void requestActionAsync(WaitingTaskHolder task, TransitionContext& context);
 
+    void resetConsumerForNewTransition();
+  
   protected:
     bool areAllProductsAvaliable() const { return providersDoneCount.load() == providers_.size(); }
 
   private:
+    virtual void resetConsumer_() {};
     /// @brief Called when data is available from all providers and requestActionAsync has been called
     /// @param task
     /// @param context

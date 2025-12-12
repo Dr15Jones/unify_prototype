@@ -32,4 +32,10 @@ namespace edm {
       reactToAllProductsAvailableAsync(task, context);
     }
   }
+
+  void ProductConsumerBase::resetConsumerForNewTransition() {
+    providersDoneCount.store(0,  std::memory_order_release);
+    haveRequestedProducts_.store(false, std::memory_order_release);
+    resetConsumer_();
+  }
 }  // namespace edm
