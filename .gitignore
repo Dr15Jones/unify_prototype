@@ -2,3 +2,4 @@ unify_prototype.code-workspace
 .vscode/
 build/
 Testing/
+*.DS_Store
