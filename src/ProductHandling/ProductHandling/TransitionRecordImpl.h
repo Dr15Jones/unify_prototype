@@ -31,6 +31,10 @@ namespace edm {
       return wrappers_[index.value()].get();
     }
 
+    void put(ProductTransitionRecordIndex index, std::unique_ptr<WrapperBase> wrapper) {
+      assert(index.value() < wrappers_.size());
+      wrappers_[index.value()] = std::move(wrapper);
+    }
     ProductTransitionRecordIndexHelper const& helper() const { return *helper_; }
 
     TransitionRecordKey const& key() const { return key_; }
