@@ -1,7 +1,7 @@
 #include <catch2/catch.hpp>
 #include "oneapi/tbb/global_control.h"
 #include "oneapi/tbb/task_group.h"
-#include "ProductHandling/CrossTransitionProductConsumer.h"
+#include <iostream>
 #include "ProductHandling/CrossTransitionProductProvider.h"
 #include "Concurrency/FinalWaitingTask.h"
 #include "Concurrency/WaitingTaskHolder.h"
@@ -26,6 +26,7 @@ namespace ctptest {
     void provideProductRequestAsync(edm::WaitingTaskHolder task, edm::TransitionContext& context) override {
       // Simulate providing products asynchronously
       task.group()->run([this, task = std::move(task), &context]() {
+        std::cout << "Providing products asynchronously" << std::endl;
         // Simulate some processing delay
         // In a real implementation, products would be made available here
         notifyConsumersProductsAvailableAsync(std::move(task), context);
@@ -49,6 +50,7 @@ namespace ctptest {
       task.group()->run([this, task = std::move(task), &context]() {
         // Simulate processing the available products
         productsAvailableNotified_ = true;
+        std::cout << "Products available notified" << std::endl;
       });
     }
     void resetConsumer_() final { productsAvailableNotified_ = false; }
@@ -62,7 +64,7 @@ namespace ctptest {
 }  // namespace ctptest
 using namespace ctptest;
 
-TEST_CASE("CrossTransitionProductConsumer and CrossTransitionProductProvider", "[CrossTransition]") {
+TEST_CASE("CrossTransitionProductProvider", "[CrossTransition]") {
   oneapi::tbb::global_control control(oneapi::tbb::global_control::max_allowed_parallelism, 1);
 
   SECTION("Sub-Transition Product Request") {
@@ -74,21 +76,23 @@ TEST_CASE("CrossTransitionProductConsumer and CrossTransitionProductProvider", "
                                      std::make_shared<edm::ProductTransitionRecordIndexHelper>(),
                                      0);
     context.insert(record);
+
+    std::vector<MockProductProvider> providers;
+    std::vector<edm::ProductProviderBase*> providerPointers;
+    providers.reserve(nTransitionInstances);
+    for (unsigned int i = 0; i < nTransitionInstances; ++i) {
+      providers.emplace_back();
+      providerPointers.push_back(&providers.back());
+    }
+
     edm::CrossTransitionProductProvider crossProvider(
+      consumer.reactsToRecord(),
         edm::TransitionRecordKey::makeKey<ctptest::ParentRecord>(),
-        2,
+        providerPointers,
         {edm::ProductKey::makeKey<ctptest::DummyProduct>("module", "instance", "process")});
 
     consumer.addProviderForProducts(&crossProvider);
 
-    std::vector<MockProductProvider> providers;
-    for (unsigned int i = 0; i < nTransitionInstances; ++i) {
-      providers.emplace_back();
-    }
-
-    for (unsigned int i = 0; i < nTransitionInstances; ++i) {
-      crossProvider.crossConsumers()[i]->addProviderForProducts(&providers[i]);
-    }
     {
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};

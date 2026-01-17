@@ -9,7 +9,6 @@ namespace edm {
 
   void ProductConsumerBase::addProviderForProducts(ProductProviderBase* iProvider) {
     providers_.push_back(iProvider);
-    iProvider->addConsumer(this);
   }
 
   void ProductConsumerBase::requestActionAsync(WaitingTaskHolder task, TransitionContext& context) {
@@ -17,7 +16,7 @@ namespace edm {
     if (haveRequestedProducts_.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
       if (not areAllProductsAvaliable()) {
         for (auto* provider : providers_) {
-          provider->provideProductRequestAsync(task, context);
+          provider->provideProductRequestAsync(task, context, this);
         }
       } else {
         //no providers, so we are done
@@ -28,7 +27,7 @@ namespace edm {
 
   void ProductConsumerBase::notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionContext& context) {
     size_t doneCount = providersDoneCount.fetch_add(1, std::memory_order_acq_rel) + 1;
-    if (doneCount == providers_.size() and haveRequestedProducts_.load(std::memory_order_acquire)) {
+    if (doneCount == providers_.size()) {
       reactToAllProductsAvailableAsync(task, context);
     }
   }

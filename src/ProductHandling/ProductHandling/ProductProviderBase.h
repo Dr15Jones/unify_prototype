@@ -2,6 +2,8 @@
 #define ProductHandling_ProductProviderBase_h
 
 #include <vector>
+#include <atomic>
+#include <oneapi/tbb/concurrent_queue.h>
 #include "DataModel/TransitionRecordKey.h"
 #include "DataModel/ProductKey.h"
 
@@ -15,26 +17,41 @@ namespace edm {
   public:
     ProductProviderBase() = default;
     virtual ~ProductProviderBase() = default;
+    ProductProviderBase(ProductProviderBase&& other)
+        : waitingConsumers_(std::move(other.waitingConsumers_)),
+          requested_{other.requested_.load()},
+          productsAvailable_{other.productsAvailable_.load()} {}
+    ProductProviderBase& operator=(ProductProviderBase&& other) {
+      if (this != &other) {
+        waitingConsumers_ = std::move(other.waitingConsumers_);
+        requested_.store(other.requested_.load());
+        productsAvailable_.store(other.productsAvailable_.load());
+      }
+      return *this;
+    }
 
     virtual TransitionRecordKey recordForProductsProvided() const = 0;
     virtual std::vector<ProductKey> productsProvided() const = 0;
 
-    void addConsumer(ProductConsumerBase* iConsumer) { consumers_.push_back(iConsumer); }
-
     /// @brief Called by a consumer to request the data products
     /// @param task
     /// @param context
-    virtual void provideProductRequestAsync(WaitingTaskHolder task, TransitionContext& context) = 0;
+    void provideProductRequestAsync(WaitingTaskHolder task, TransitionContext& context, ProductConsumerBase* consumer);
 
-    virtual void resetProvider() {};
+    void resetProvider();
+
   protected:
     /// @brief Call when products are available to notify consumers. This must be called once an only once per transition
     /// @param task
     /// @param context
     void notifyConsumersProductsAvailableAsync(WaitingTaskHolder task, TransitionContext& context);
+    virtual void provideProductRequestAsync(WaitingTaskHolder task, TransitionContext& context) = 0;
 
   private:
-    std::vector<ProductConsumerBase*> consumers_;
+    virtual void resetProvider_() {}
+    oneapi::tbb::concurrent_queue<ProductConsumerBase*> waitingConsumers_;
+    std::atomic<bool> requested_{false};
+    std::atomic<bool> productsAvailable_{false};
   };
 }  // namespace edm
 #endif
