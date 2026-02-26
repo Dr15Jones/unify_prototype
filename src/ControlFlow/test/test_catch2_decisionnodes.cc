@@ -7,6 +7,8 @@
 #include "Concurrency/FinalWaitingTask.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "ProductHandling/TransitionContext.h"
+#include "ProductHandling/TransitionProcessingContext.h"
+#include "ProductHandling/TransitionProviderContext.h"
 #include "ControlFlow/StartDecisionGraph.h"
 #include "ControlFlow/AndDecisionNode.h"
 #include "ControlFlow/OrDecisionNode.h"
@@ -19,6 +21,8 @@ TEST_CASE("ControlFlow Decision Nodes", "[ControlFlow]") {
   SECTION("Dummy Decision Node") {
     SECTION("GO Status") {
       edm::TransitionContext context;
+      edm::TransitionProviderContext providerContext;
+      edm::TransitionProcessingContext processingContext{context, providerContext};
       auto node = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::GO);
       edm::SpyingDecisionNode spyingNode{node};
     
@@ -28,12 +32,14 @@ TEST_CASE("ControlFlow Decision Nodes", "[ControlFlow]") {
 
       edm::StartDecisionGraph startNode;
       startNode.addLeafNode(&spyingNode);
-      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(spyingNode.status() == edm::ControlFlowStatus::GO);
     }
     SECTION("SKIP Status") {
       edm::TransitionContext context;
+      edm::TransitionProviderContext providerContext;
+      edm::TransitionProcessingContext processingContext{context, providerContext};
       auto node = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::SKIP);
       edm::SpyingDecisionNode spyingNode{node};
     
@@ -43,12 +49,14 @@ TEST_CASE("ControlFlow Decision Nodes", "[ControlFlow]") {
 
       edm::StartDecisionGraph startNode;
       startNode.addLeafNode(&spyingNode);
-      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(spyingNode.status() == edm::ControlFlowStatus::SKIP);
     }
     SECTION("EXCEPTION Status") {
       edm::TransitionContext context;
+      edm::TransitionProviderContext providerContext;
+      edm::TransitionProcessingContext processingContext{context, providerContext};
       auto node = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::EXCEPTION);
       edm::SpyingDecisionNode spyingNode{node};
     
@@ -58,7 +66,7 @@ TEST_CASE("ControlFlow Decision Nodes", "[ControlFlow]") {
 
       edm::StartDecisionGraph startNode;
       startNode.addLeafNode(&spyingNode);
-      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(spyingNode.status() == edm::ControlFlowStatus::EXCEPTION);
     }
@@ -66,6 +74,8 @@ TEST_CASE("ControlFlow Decision Nodes", "[ControlFlow]") {
   SECTION("AND Decision Node") {
     SECTION("GO and SKIP Status") {
       edm::TransitionContext context;
+      edm::TransitionProviderContext providerContext;
+      edm::TransitionProcessingContext processingContext{context, providerContext};
       std::shared_ptr<edm::DecisionNodeBase> node1 = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::GO);
       std::shared_ptr<edm::DecisionNodeBase> node2 = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::SKIP);
       auto andNode = std::make_shared<edm::AndDecisionNode >(node1, node2);
@@ -76,12 +86,14 @@ TEST_CASE("ControlFlow Decision Nodes", "[ControlFlow]") {
 
       edm::StartDecisionGraph startNode;
       startNode.addLeafNode(&spyingNode);
-      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(spyingNode.status() == edm::ControlFlowStatus::SKIP);
     }
     SECTION("GO and GO Status") {
       edm::TransitionContext context;
+      edm::TransitionProviderContext providerContext;
+      edm::TransitionProcessingContext processingContext{context, providerContext};
       std::shared_ptr<edm::DecisionNodeBase> node1 = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::GO);
       std::shared_ptr<edm::DecisionNodeBase> node2 = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::GO);
       auto andNode = std::make_shared<edm::AndDecisionNode >(node1, node2);
@@ -92,12 +104,14 @@ TEST_CASE("ControlFlow Decision Nodes", "[ControlFlow]") {
 
       edm::StartDecisionGraph startNode;
       startNode.addLeafNode(&spyingNode);
-      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(spyingNode.status() == edm::ControlFlowStatus::GO);
     }
     SECTION("SKIP and GO Status") {
       edm::TransitionContext context;
+      edm::TransitionProviderContext providerContext;
+      edm::TransitionProcessingContext processingContext{context, providerContext};
       std::shared_ptr<edm::DecisionNodeBase> node1 = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::SKIP);
       std::shared_ptr<edm::DecisionNodeBase> node2 = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::GO);
       auto andNode = std::make_shared<edm::AndDecisionNode >(node1, node2);
@@ -108,12 +122,14 @@ TEST_CASE("ControlFlow Decision Nodes", "[ControlFlow]") {
 
       edm::StartDecisionGraph startNode;
       startNode.addLeafNode(&spyingNode);
-      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(spyingNode.status() == edm::ControlFlowStatus::SKIP);
     }
     SECTION("SKIP and SKIP Status") {
       edm::TransitionContext context;
+      edm::TransitionProviderContext providerContext;
+      edm::TransitionProcessingContext processingContext{context, providerContext};
       std::shared_ptr<edm::DecisionNodeBase> node1 = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::SKIP);
       std::shared_ptr<edm::DecisionNodeBase> node2 = std::make_shared<edm::DummyDecisionNode >(edm::ControlFlowStatus::SKIP);
       auto andNode = std::make_shared<edm::AndDecisionNode >(node1, node2);
@@ -124,7 +140,7 @@ TEST_CASE("ControlFlow Decision Nodes", "[ControlFlow]") {
 
       edm::StartDecisionGraph startNode;
       startNode.addLeafNode(&spyingNode);
-      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      startNode.startAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(spyingNode.status() == edm::ControlFlowStatus::SKIP);
     }

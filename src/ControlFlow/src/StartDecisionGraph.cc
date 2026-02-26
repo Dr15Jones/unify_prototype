@@ -4,7 +4,7 @@
 #include "Concurrency/WaitingTaskHolder.h"
 
 namespace edm {
-  void StartDecisionGraph::startAsync(WaitingTaskHolder task, TransitionContext& context) {
+  void StartDecisionGraph::startAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) {
     for (auto leaf : leafNodes_) {
       leaf->requestDecisionAsync(task, context, RequestState::REQUEST_DECISION);
     }
@@ -17,7 +17,7 @@ namespace edm {
 
 
   void StartDecisionGraph::decisionFromNodeAsync(WaitingTaskHolder task,
-                                                 TransitionContext& context,
+                                                 TransitionProcessingContext const & context,
                                                  void const* nodeHash,
                                                  ControlFlowStatus decision) {
     auto finishedLeafNodes = finishedLeafNodes_.fetch_add(1, std::memory_order_acq_rel);

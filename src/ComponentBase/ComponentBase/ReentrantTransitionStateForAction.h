@@ -1,6 +1,7 @@
 #ifndef ComponentBase_ReentrantTransitionStateForAction_h
 #define ComponentBase_ReentrantTransitionStateForAction_h
 #include "ComponentBase/TransitionStateForActionBase.h"
+#include "ProductHandling/TransitionProcessingContext.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "Concurrency/WaitingTask.h"
 
@@ -32,11 +33,11 @@ namespace edm {
   protected:
     /// @brief The actual work to be done by the action. Once the work is done
     /// the derived class must call doneWorkAsync to notify completion
-    void workAsync(WaitingTaskHolder task, TransitionContext& context) final {
+    void workAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) final {
       task.group()->run([this, task = std::move(task), &context]() {
         ActionResult result;
         try {
-          result = action_.work(context);
+          result = action_.work(context.transitionContext());
         } catch (...) {
           result.setStatus(ActionResultStatus::EXCEPTION);
           WaitingTaskHolder localTask(task);

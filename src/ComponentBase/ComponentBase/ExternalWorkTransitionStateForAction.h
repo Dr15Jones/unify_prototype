@@ -32,7 +32,7 @@ namespace edm {
   protected:
     /// @brief The actual work to be done by the action. Once the work is done
     /// the derived class must call doneWorkAsync to notify completion
-    void workAsync(WaitingTaskHolder task, TransitionContext& context) final {
+    void workAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) final {
       task.group()->run([this, task = std::move(task), &context]() {
         auto postTask = edm::make_waiting_task([this, &context, task](std::exception_ptr const* eptr) {
           ActionResult result;
@@ -40,7 +40,7 @@ namespace edm {
             result.setStatus(ActionResultStatus::EXCEPTION);
           } else {
             try {
-              result = action_.work(context);
+              result = action_.work(context.transitionContext());
             } catch (...) {
               result.setStatus(ActionResultStatus::EXCEPTION);
             }
@@ -49,7 +49,7 @@ namespace edm {
         });
 
         try {
-          action_.acquire(context, WaitingTaskHolder(*task.group(), postTask));
+          action_.acquire(context.transitionContext(), WaitingTaskHolder(*task.group(), postTask));
         } catch (...) {
           edm::ActionResult result(ActionResultStatus::EXCEPTION);
           WaitingTaskHolder localTask(task);

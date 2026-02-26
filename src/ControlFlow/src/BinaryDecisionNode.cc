@@ -10,7 +10,7 @@ namespace edm {
   }
 
   void BinaryDecisionNode::decisionFromNodeAsync(WaitingTaskHolder task,
-                                                          TransitionContext& context,
+                                                          TransitionProcessingContext const & context,
                                                           void const* nodeHash,
                                                           ControlFlowStatus decision) {
     if (nodeHash == leftNode_.get()) {
@@ -42,7 +42,7 @@ namespace edm {
   }
 
   void BinaryDecisionNode::makeDecisionAsync_(WaitingTaskHolder task,
-                                                   TransitionContext& context,
+                                                   TransitionProcessingContext const & context,
                                                    RequestState state) {
     requestCallsToComposites_ = 1;
     setInProgressForDiagnostics();

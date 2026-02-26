@@ -5,10 +5,10 @@
 
 namespace edm {
   class WaitingTaskHolder;
-  class TransitionContext;
+  class TransitionProcessingContext;
   class DecisionRequestorBase {
   public:
-    virtual void decisionFromNodeAsync(WaitingTaskHolder, TransitionContext&, void const*, ControlFlowStatus) = 0;
+    virtual void decisionFromNodeAsync(WaitingTaskHolder, TransitionProcessingContext const &, void const*, ControlFlowStatus) = 0;
   };
 }  // namespace edm
 

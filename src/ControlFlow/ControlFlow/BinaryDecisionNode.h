@@ -18,12 +18,12 @@ namespace edm {
     BinaryDecisionNode(std::shared_ptr<DecisionNodeBase>& iLeft, std::shared_ptr<DecisionNodeBase>& iRight);
     ~BinaryDecisionNode() override = default;
     void decisionFromNodeAsync(WaitingTaskHolder task,
-                                        TransitionContext& context,
+                                        TransitionProcessingContext const & context,
                                         void const* nodeHash,
                                         ControlFlowStatus decision) override;
 
   private:
-    void makeDecisionAsync_(WaitingTaskHolder task, TransitionContext& context, RequestState state) override;
+    void makeDecisionAsync_(WaitingTaskHolder task, TransitionProcessingContext const & context, RequestState state) override;
 
     virtual ControlFlowStatus fullDecisionLogic_(ControlFlowStatus left, ControlFlowStatus right) const = 0;
     virtual ControlFlowStatus shortCircuitLogic_(ControlFlowStatus decision) const = 0;

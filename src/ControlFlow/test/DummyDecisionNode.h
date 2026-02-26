@@ -10,7 +10,7 @@ namespace edm {
     ~DummyDecisionNode() final = default;
 
   private:
-    void makeDecisionAsync_(WaitingTaskHolder task, TransitionContext& context, RequestState state) final {
+    void makeDecisionAsync_(WaitingTaskHolder task, TransitionProcessingContext const & context, RequestState state) final {
         if (state == RequestState::NO_REQUEST_COMING) {
           return;
         }

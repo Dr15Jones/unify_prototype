@@ -12,7 +12,7 @@ Base class for nodes in the decision tree
 namespace edm {
   class DecisionRequestorBase;
   class WaitingTaskHolder;
-  class TransitionContext;
+  class TransitionProcessingContext;
 
   enum class RunStatus {
     NOT_STARTED,
@@ -29,7 +29,7 @@ namespace edm {
     virtual ~DecisionNodeBase() = default;
 
     void addRequestorForDecision(DecisionRequestorBase* iReq) { requestors_.push_back(iReq); }
-    void requestDecisionAsync(WaitingTaskHolder iTask, TransitionContext& iContext, RequestState state);
+    void requestDecisionAsync(WaitingTaskHolder iTask, TransitionProcessingContext const & iContext, RequestState state);
     void resetForNewTransition() {
       if (requestors_.empty()) {
         runStatus_ = RunStatus::SHOULD_RUN;
@@ -45,13 +45,13 @@ namespace edm {
 
   protected:
     void sendDecisionToRequestorsAsync_(WaitingTaskHolder task,
-                                        TransitionContext& context,
+                                        TransitionProcessingContext const & context,
                                         ControlFlowStatus decision);
     void setInProgressForDiagnostics() { runStatus_ = RunStatus::IN_PROGRESS; }
     void setCompletedForDiagnostics() { runStatus_ = RunStatus::COMPLETED; }
     RunStatus runStatus() const { return runStatus_; }
   private:
-    virtual void makeDecisionAsync_(WaitingTaskHolder task, TransitionContext& context, RequestState state) = 0;
+    virtual void makeDecisionAsync_(WaitingTaskHolder task, TransitionProcessingContext const & context, RequestState state) = 0;
 
     RunStatus runStatus_;
     std::vector<DecisionRequestorBase*> requestors_;

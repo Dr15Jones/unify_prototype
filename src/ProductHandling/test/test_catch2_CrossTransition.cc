@@ -2,12 +2,15 @@
 #include "oneapi/tbb/global_control.h"
 #include "oneapi/tbb/task_group.h"
 #include <iostream>
-#include "ProductHandling/CrossTransitionProductProvider.h"
 #include "Concurrency/FinalWaitingTask.h"
 #include "Concurrency/WaitingTaskHolder.h"
+#include "ProductHandling/ProductProviderBase.h"
+#include "ProductHandling/ProductConsumerBase.h"
 #include "ProductHandling/TransitionContext.h"
 #include "ProductHandling/TransitionRecordImpl.h"
 #include "ProductHandling/ProductTransitionRecordIndexHelper.h"
+#include "ProductHandling/TransitionProcessingContext.h"
+#include "ProductHandling/TransitionProviderContext.h"
 namespace ctptest {
   struct DummyRecord {};
   struct DummyProduct {};
@@ -23,7 +26,7 @@ namespace ctptest {
       return {edm::ProductKey::makeKey<int>("moduleA", "instanceA", "processA")};
     }
 
-    void provideProductRequestAsync(edm::WaitingTaskHolder task, edm::TransitionContext& context) override {
+    void provideProductRequestAsync(edm::WaitingTaskHolder task, edm::TransitionProcessingContext const & context) override {
       // Simulate providing products asynchronously
       task.group()->run([this, task = std::move(task), &context]() {
         std::cout << "Providing products asynchronously" << std::endl;
@@ -46,7 +49,7 @@ namespace ctptest {
     std::vector<edm::ProductKey> productsConsumed(edm::TransitionRecordKey const&) const final {
       return {edm::ProductKey::makeKey<int>("moduleA", "instanceA", "processA")};
     }
-    void reactToAllProductsAvailableAsync(edm::WaitingTaskHolder task, edm::TransitionContext& context) final {
+    void reactToAllProductsAvailableAsync(edm::WaitingTaskHolder task, edm::TransitionProcessingContext const & context) final {
       task.group()->run([this, task = std::move(task), &context]() {
         // Simulate processing the available products
         productsAvailableNotified_ = true;
@@ -78,39 +81,41 @@ TEST_CASE("CrossTransitionProductProvider", "[CrossTransition]") {
     context.insert(record);
 
     std::vector<MockProductProvider> providers;
-    std::vector<edm::ProductProviderBase*> providerPointers;
+    std::vector<edm::TransitionProductProviders> providersRecords;
+    auto const& recordKey = record.key();
     providers.reserve(nTransitionInstances);
+    providersRecords.reserve(nTransitionInstances);
     for (unsigned int i = 0; i < nTransitionInstances; ++i) {
       providers.emplace_back();
-      providerPointers.push_back(&providers.back());
+      providersRecords.emplace_back(recordKey, std::vector<edm::ProductProviderBase*>{&providers.back()});
     }
 
-    edm::CrossTransitionProductProvider crossProvider(
-      consumer.reactsToRecord(),
-        edm::TransitionRecordKey::makeKey<ctptest::ParentRecord>(),
-        providerPointers,
-        {edm::ProductKey::makeKey<ctptest::DummyProduct>("module", "instance", "process")});
-
-    consumer.addProviderForProducts(&crossProvider);
-
+    consumer.addProviderForProducts(recordKey, providersRecords.front().indexForProvider(&providers.front()));
     {
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};
 
+      edm::TransitionProviderContext providerContext;
+      providerContext.insert(providersRecords.front());
+      edm::TransitionProcessingContext processingContext{context, providerContext};
+
       // Request products asynchronously
-      consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(consumer.productsAvailableNotified() == true);
     }
     consumer.resetConsumerForNewTransition();
-    crossProvider.resetProvider();
     REQUIRE(consumer.productsAvailableNotified() == false);
     {
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};
 
+      edm::TransitionProviderContext providerContext;
+      providerContext.insert(providersRecords.front());
+      edm::TransitionProcessingContext processingContext{context, providerContext};
+
       // Request products asynchronously
-      consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(consumer.productsAvailableNotified() == true);
     }

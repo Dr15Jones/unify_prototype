@@ -7,19 +7,19 @@
 namespace edm {
   class DecisionNodeBase;
   class WaitingTaskHolder;
-  class TransitionContext;
+  class TransitionProcessingContext;
 
   class StartDecisionGraph : public DecisionRequestorBase {
   public:
     StartDecisionGraph() = default;
     virtual ~StartDecisionGraph() final = default;
 
-    void startAsync(WaitingTaskHolder task, TransitionContext& context);
+    void startAsync(WaitingTaskHolder task, TransitionProcessingContext const & context);
 
     void addLeafNode(DecisionNodeBase* iLeaf);
 
     void decisionFromNodeAsync(WaitingTaskHolder task,
-                               TransitionContext& context,
+                               TransitionProcessingContext const & context,
                                void const* nodeHash,
                                ControlFlowStatus decision) final;
 

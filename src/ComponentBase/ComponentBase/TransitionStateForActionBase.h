@@ -32,26 +32,26 @@ namespace edm {
   protected:
     /// @brief Must be called by derived classes when task started by workAsync is done
     /// @param result the result of the action
-    void doneWorkAsync(WaitingTaskHolder task, TransitionContext& context, ActionResult result);
+    void doneWorkAsync(WaitingTaskHolder task, TransitionProcessingContext const & context, ActionResult result);
 
     virtual void reset_() {};
 
   private:
     // ProductConsumerBase interface
-    void reactToAllProductsAvailableAsync(WaitingTaskHolder task, TransitionContext& context) final;
+    void reactToAllProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) final;
     // ProductProviderBase interface
-    void provideProductRequestAsync(WaitingTaskHolder task, TransitionContext& context) final;
+    void provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) final;
 
   // DecisionNodeBase interface
-    void makeDecisionAsync_(WaitingTaskHolder task, TransitionContext& context, RequestState state) final;
-    void willNotRunAsync(WaitingTaskHolder task, TransitionContext& context);
+    void makeDecisionAsync_(WaitingTaskHolder task, TransitionProcessingContext const & context, RequestState state) final;
+    void willNotRunAsync(WaitingTaskHolder task, TransitionProcessingContext const & context);
     /// @brief Checks conditions to decide if workAsync should be called
     /// @return true if workAsync was called 
-    bool checkIfShouldRunAsync(WaitingTaskHolder task, TransitionContext& context);
+    bool checkIfShouldRunAsync(WaitingTaskHolder task, TransitionProcessingContext const & context);
 
     /// @brief The actual work to be done by the action. Once the work is done
     /// the derived class must call doneWorkAsync to notify completion
-    virtual void workAsync(WaitingTaskHolder task, TransitionContext& context) = 0;
+    virtual void workAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) = 0;
 
     std::atomic<unsigned int> waitingConditionsToRun_{2};
   };

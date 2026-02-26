@@ -16,7 +16,7 @@ namespace edm {
     ~SpyingDecisionNode() final = default;
 
     void decisionFromNodeAsync(WaitingTaskHolder task,
-                                        TransitionContext& context,
+                                        TransitionProcessingContext const & context,
                                         void const* nodeHash,
                                         ControlFlowStatus decision) final {
         status_ = decision;
@@ -25,7 +25,7 @@ namespace edm {
 
     ControlFlowStatus status() const { return status_; }
   private:
-    void makeDecisionAsync_(WaitingTaskHolder task, TransitionContext& context, RequestState state) final {
+    void makeDecisionAsync_(WaitingTaskHolder task, TransitionProcessingContext const & context, RequestState state) final {
         if (state != RequestState::NO_REQUEST_COMING) {
           setInProgressForDiagnostics();
         }

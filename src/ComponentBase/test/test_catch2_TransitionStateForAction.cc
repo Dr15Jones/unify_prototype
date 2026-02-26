@@ -7,6 +7,8 @@
 #include "Concurrency/FinalWaitingTask.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "ProductHandling/TransitionContext.h"
+#include "ProductHandling/TransitionProcessingContext.h"
+#include "ProductHandling/TransitionProviderContext.h"
 #include "ControlFlow/DecisionRequestorBase.h"
 
 namespace {
@@ -23,7 +25,7 @@ namespace {
       return {edm::ProductKey::makeKey<int>("module", "instance", "process")};
     }
 
-    edm::ActionResult work(edm::TransitionContext& context) {
+    edm::ActionResult work(edm::TransitionContext const& context) {
       // Simulate some work
       return edm::ActionResult(edm::ActionResultStatus::ACCEPT);
     }
@@ -45,12 +47,12 @@ namespace {
       return {edm::ProductKey::makeKey<int>("module", "instance", "process")};
     }
 
-    void acquire(edm::TransitionContext& context, edm::WaitingTaskHolder holder) {
+    void acquire(edm::TransitionContext const& context, edm::WaitingTaskHolder holder) {
       // Simulate some asynchronous acquisition
       *acquireCalled = true;
       holder.doneWaiting(std::exception_ptr{});
     }
-    edm::ActionResult work(edm::TransitionContext& context) {
+    edm::ActionResult work(edm::TransitionContext const& context) {
       // Simulate some work
       *workCalled = true;
       return edm::ActionResult(edm::ActionResultStatus::ACCEPT);
@@ -67,7 +69,7 @@ namespace {
     std::vector<edm::ProductKey> productsConsumed(edm::TransitionRecordKey const&) const override {
       return {edm::ProductKey::makeKey<int>("module", "instance", "process")};
     }
-    void reactToAllProductsAvailableAsync(edm::WaitingTaskHolder task, edm::TransitionContext& context) override {
+    void reactToAllProductsAvailableAsync(edm::WaitingTaskHolder task, edm::TransitionProcessingContext const & context) override {
       wasCalled = true;
     }
   };
@@ -76,7 +78,7 @@ namespace {
   public:
     std::atomic<bool> wasCalled{false};
     void decisionFromNodeAsync(edm::WaitingTaskHolder,
-                               edm::TransitionContext&,
+                               edm::TransitionProcessingContext const &,
                                void const*,
                                edm::ControlFlowStatus) final {
       wasCalled = true;
@@ -92,12 +94,18 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::TransitionContext context;
       edm::ReentrantTransitionStateForAction<SimpleAction> actionState{SimpleAction()};
 
+      edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});
+      edm::TransitionProviderContext providerContext;
+      providerContext.insert(providers);
+
+      edm::TransitionProcessingContext processingContext(context, providerContext);
+      
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};
 
       TrivialConsumer consumer;
-      consumer.addProviderForProducts(&actionState);
-      consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      consumer.addProviderForProducts(actionState.recordForProductsProvided(), providers.indexForProvider(&actionState));
+      consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());
       REQUIRE(not waitTask.exceptionPtr());
@@ -108,13 +116,19 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::TransitionContext context;
       edm::ReentrantTransitionStateForAction<SimpleAction> actionState{SimpleAction()};
 
+      edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});
+      edm::TransitionProviderContext providerContext;
+      providerContext.insert(providers);
+
+      edm::TransitionProcessingContext processingContext(context, providerContext);
+
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};
 
       TrvialRequester requester;
       actionState.addRequestorForDecision(&requester);
       actionState.requestDecisionAsync(
-          edm::WaitingTaskHolder(group, &waitTask), context, edm::RequestState::REQUEST_DECISION);
+          edm::WaitingTaskHolder(group, &waitTask), processingContext, edm::RequestState::REQUEST_DECISION);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());
       REQUIRE(not waitTask.exceptionPtr());
@@ -129,12 +143,18 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::ExternalWorkTransitionStateForAction<SimpleExternalWorkAction> actionState{
           SimpleExternalWorkAction(&acquireCalled, &workCalled)};
 
+      edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});
+      edm::TransitionProviderContext providerContext;
+      providerContext.insert(providers);
+
+      edm::TransitionProcessingContext processingContext(context, providerContext);
+
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};
 
       TrivialConsumer consumer;
-      consumer.addProviderForProducts(&actionState);
-      consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), context);
+      consumer.addProviderForProducts(actionState.recordForProductsProvided(), providers.indexForProvider(&actionState));
+      consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());
       REQUIRE(not waitTask.exceptionPtr());
@@ -151,13 +171,19 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::ExternalWorkTransitionStateForAction<SimpleExternalWorkAction> actionState{
           SimpleExternalWorkAction(&acquireCalled, &workCalled)};
 
+      edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});
+      edm::TransitionProviderContext providerContext;
+      providerContext.insert(providers);
+
+      edm::TransitionProcessingContext processingContext(context, providerContext);
+
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};
 
       TrvialRequester requester;
       actionState.addRequestorForDecision(&requester);
       actionState.requestDecisionAsync(
-          edm::WaitingTaskHolder(group, &waitTask), context, edm::RequestState::REQUEST_DECISION);
+          edm::WaitingTaskHolder(group, &waitTask), processingContext, edm::RequestState::REQUEST_DECISION);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());
       REQUIRE(not waitTask.exceptionPtr());

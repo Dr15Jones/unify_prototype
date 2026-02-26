@@ -4,14 +4,16 @@
 #include <vector>
 #include <optional>
 
+#include "DataModel/TransitionRecordKey.h"
+#include "ProductHandling/TransitionProductProviderIndex.h"
+
 namespace edm {
   class WaitingTaskHolder;
   class TransitionContext;
+  class TransitionProcessingContext;
   class TransitionRecordKey;
   class ProductKey;
-
-  class ProductProviderBase;
-
+  class TransitionProductProviderIndex;
   class ProductConsumerBase {
   public:
     ProductConsumerBase() = default;
@@ -30,16 +32,16 @@ namespace edm {
     /// @brief The products consumed by this consumer from a given record
     virtual std::vector<ProductKey> productsConsumed(TransitionRecordKey const&) const = 0;
 
-    void addProviderForProducts(ProductProviderBase* iProvider);
+    void addProviderForProducts(TransitionRecordKey iTrans, TransitionProductProviderIndex iIndex);
 
     /// @brief Called by a provider to notify that data products are available
-    void notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionContext& context);
+    void notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const & context);
 
     /// @brief Called by the scheduler when the consumer's action is to be performed maybe called several times
     /// will trigger requests to all providers if products are not yet available
     /// @param task
     /// @param context
-    void requestActionAsync(WaitingTaskHolder task, TransitionContext& context);
+    void requestActionAsync(WaitingTaskHolder task, TransitionProcessingContext const & context);
 
     void resetConsumerForNewTransition();
   
@@ -51,8 +53,8 @@ namespace edm {
     /// @brief Called when data is available from all providers and requestActionAsync has been called
     /// @param task
     /// @param context
-    virtual void reactToAllProductsAvailableAsync(WaitingTaskHolder task, TransitionContext& context) = 0;
-    std::vector<ProductProviderBase*> providers_;
+    virtual void reactToAllProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) = 0;
+    std::vector<std::pair<TransitionRecordKey, TransitionProductProviderIndex>> providers_;
     std::atomic<size_t> providersDoneCount{0};
     std::atomic<bool> haveRequestedProducts_{false};
   };
