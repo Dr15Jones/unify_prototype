@@ -1,38 +1,32 @@
 #ifndef ComponentBase_ExternalWorkTransitionStateForAction_h
 #define ComponentBase_ExternalWorkTransitionStateForAction_h
-#include "ComponentBase/TransitionStateForActionBase.h"
+#include "ComponentBase/TransitionStateForActionSingleBase.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "Concurrency/WaitingTask.h"
 
 namespace edm {
-    template <typename T>
-  class ExternalWorkTransitionStateForAction : public TransitionStateForActionBase {
+  template <typename T>
+  class ExternalWorkTransitionStateForAction : public TransitionStateForActionSingleBase {
   public:
     explicit ExternalWorkTransitionStateForAction(T&& iAction) : action_(std::forward<T>(iAction)) {}
     ~ExternalWorkTransitionStateForAction() override = default;
 
-        // ProductConsumerBase interface
-    TransitionRecordKey reactsToRecord() const override {
-      return action_.reactsToRecord();
-    }
+    // ProductConsumerBase interface
+    TransitionRecordKey reactsToRecord() const override { return action_.reactsToRecord(); }
     std::vector<TransitionRecordKey> recordForProductsConsumed() const override {
       return action_.recordForProductsConsumed();
     }
     std::vector<ProductKey> productsConsumed(TransitionRecordKey const& record) const override {
       return action_.productsConsumed(record);
-    }   
+    }
     // ProductProviderBase interface
-    TransitionRecordKey recordForProductsProvided() const override {
-      return action_.recordForProductsProvided();
-    }
-    std::vector<ProductKey> productsProvided() const override {
-      return action_.productsProvided();
-    }
+    TransitionRecordKey recordForProductsProvided() const override { return action_.recordForProductsProvided(); }
+    std::vector<ProductKey> productsProvided() const override { return action_.productsProvided(); }
 
   protected:
     /// @brief The actual work to be done by the action. Once the work is done
     /// the derived class must call doneWorkAsync to notify completion
-    void workAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) final {
+    void workAsync(WaitingTaskHolder task, TransitionProcessingContext const& context) final {
       task.group()->run([this, task = std::move(task), &context]() {
         auto postTask = edm::make_waiting_task([this, &context, task](std::exception_ptr const* eptr) {
           ActionResult result;
@@ -61,7 +55,7 @@ namespace edm {
     }
 
   private:
-  T action_;
+    T action_;
   };
 }  // namespace edm
 

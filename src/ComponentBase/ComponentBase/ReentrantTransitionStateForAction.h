@@ -1,39 +1,33 @@
 #ifndef ComponentBase_ReentrantTransitionStateForAction_h
 #define ComponentBase_ReentrantTransitionStateForAction_h
-#include "ComponentBase/TransitionStateForActionBase.h"
+#include "ComponentBase/TransitionStateForActionSingleBase.h"
 #include "ProductHandling/TransitionProcessingContext.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "Concurrency/WaitingTask.h"
 
 namespace edm {
-    template <typename T>
-  class ReentrantTransitionStateForAction : public TransitionStateForActionBase {
+  template <typename T>
+  class ReentrantTransitionStateForAction : public TransitionStateForActionSingleBase {
   public:
     explicit ReentrantTransitionStateForAction(T&& iAction) : action_(std::forward<T>(iAction)) {}
     ~ReentrantTransitionStateForAction() override = default;
 
-        // ProductConsumerBase interface
-    TransitionRecordKey reactsToRecord() const override {
-      return action_.reactsToRecord();
-    }
+    // ProductConsumerBase interface
+    TransitionRecordKey reactsToRecord() const override { return action_.reactsToRecord(); }
     std::vector<TransitionRecordKey> recordForProductsConsumed() const override {
       return action_.recordForProductsConsumed();
     }
     std::vector<ProductKey> productsConsumed(TransitionRecordKey const& record) const override {
       return action_.productsConsumed(record);
-    }   
+    }
     // ProductProviderBase interface
-    TransitionRecordKey recordForProductsProvided() const override {
-      return action_.recordForProductsProvided();
-    }
-    std::vector<ProductKey> productsProvided() const override {
-      return action_.productsProvided();
-    }
+    TransitionRecordKey recordForProductsProvided() const override { return action_.recordForProductsProvided(); }
+    std::vector<ProductKey> productsProvided() const override { return action_.productsProvided(); }
 
   protected:
     /// @brief The actual work to be done by the action. Once the work is done
     /// the derived class must call doneWorkAsync to notify completion
-    void workAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) final {
+    void workAsync(WaitingTaskHolder task, TransitionProcessingContext const& context) final {
       task.group()->run([this, task = std::move(task), &context]() {
         ActionResult result;
         try {
@@ -50,7 +44,7 @@ namespace edm {
     }
 
   private:
-  T action_;
+    T action_;
   };
 }  // namespace edm
 
