@@ -59,7 +59,7 @@ namespace {
     }
   };
 
-  class TrivialConsumer : public edm::ProductConsumerBase {
+  class TrivialConsumer : public edm::ProductConsumerSingleBase<> {
   public:
     std::atomic<bool> wasCalled{false};
     edm::TransitionRecordKey reactsToRecord() const override { return edm::TransitionRecordKey::makeKey<int>(); }
@@ -104,7 +104,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::FinalWaitingTask waitTask{group};
 
       TrivialConsumer consumer;
-      consumer.addProviderForProducts(actionState.recordForProductsProvided(), providers.indexForProvider(&actionState));
+      consumer.addProviderForProducts(actionState.recordForProductsProvided(), actionState.productsProvided().front(), providers.indexForProvider(&actionState));
       consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());
@@ -153,7 +153,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::FinalWaitingTask waitTask{group};
 
       TrivialConsumer consumer;
-      consumer.addProviderForProducts(actionState.recordForProductsProvided(), providers.indexForProvider(&actionState));
+      consumer.addProviderForProducts(actionState.recordForProductsProvided(), actionState.productsProvided().front(), providers.indexForProvider(&actionState));
       consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());

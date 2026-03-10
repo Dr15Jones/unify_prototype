@@ -6,6 +6,7 @@
 #include "Concurrency/WaitingTaskHolder.h"
 #include "ProductHandling/ProductProviderBase.h"
 #include "ProductHandling/ProductConsumerBase.h"
+#include "ProductHandling/ProductConsumerSingleBase.h"
 #include "ProductHandling/TransitionContext.h"
 #include "ProductHandling/TransitionRecordImpl.h"
 #include "ProductHandling/ProductTransitionRecordIndexHelper.h"
@@ -38,7 +39,7 @@ namespace ctptest {
   };
 
   // Mock ProductConsumer
-  class MockProductConsumer : public edm::ProductConsumerBase {
+  class MockProductConsumer : public edm::ProductConsumerSingleBase<> {
   public:
     edm::TransitionRecordKey reactsToRecord() const final {
       return edm::TransitionRecordKey::makeKey<ctptest::DummyRecord>();
@@ -90,7 +91,7 @@ TEST_CASE("CrossTransitionProductProvider", "[CrossTransition]") {
       providersRecords.emplace_back(recordKey, std::vector<edm::ProductProviderBase*>{&providers.back()});
     }
 
-    consumer.addProviderForProducts(recordKey, providersRecords.front().indexForProvider(&providers.front()));
+    consumer.addProviderForProducts(recordKey, providers.front().productsProvided().front(), providersRecords.front().indexForProvider(&providers.front()));
     {
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};

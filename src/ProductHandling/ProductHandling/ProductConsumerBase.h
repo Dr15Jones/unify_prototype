@@ -32,31 +32,19 @@ namespace edm {
     /// @brief The products consumed by this consumer from a given record
     virtual std::vector<ProductKey> productsConsumed(TransitionRecordKey const&) const = 0;
 
-    void addProviderForProducts(TransitionRecordKey iTrans, TransitionProductProviderIndex iIndex);
+    /// @brief Called by the scheduler to inform the consumer about which provider to use to get the products
+    virtual void addProviderForProducts(TransitionRecordKey iTrans, ProductKey, TransitionProductProviderIndex iIndex) = 0;
 
     /// @brief Called by a provider to notify that data products are available
-    void notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const & context);
+    virtual void notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) = 0;
 
     /// @brief Called by the scheduler when the consumer's action is to be performed maybe called several times
     /// will trigger requests to all providers if products are not yet available
     /// @param task
     /// @param context
-    void requestActionAsync(WaitingTaskHolder task, TransitionProcessingContext const & context);
+    virtual void requestActionAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) = 0;
 
-    void resetConsumerForNewTransition();
-  
-  protected:
-    bool areAllProductsAvaliable() const { return providersDoneCount.load() == providers_.size(); }
-
-  private:
-    virtual void resetConsumer_() {};
-    /// @brief Called when data is available from all providers and requestActionAsync has been called
-    /// @param task
-    /// @param context
-    virtual void reactToAllProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) = 0;
-    std::vector<std::pair<TransitionRecordKey, TransitionProductProviderIndex>> providers_;
-    std::atomic<size_t> providersDoneCount{0};
-    std::atomic<bool> haveRequestedProducts_{false};
+    virtual void resetConsumerForNewTransition() = 0;  
   };
 }  // namespace edm
 

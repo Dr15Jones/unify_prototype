@@ -2,12 +2,13 @@
 #define ComponentBase_TransitionStateForActionBase_h
 
 #include "ProductHandling/ProductConsumerBase.h"
+#include "ProductHandling/ProductConsumerSingleBase.h"
 #include "ProductHandling/ProductProviderBase.h"
 #include "ControlFlow/DecisionNodeBase.h"
 #include "ComponentBase/ActionResult.h"
 
 namespace edm {
-  class TransitionStateForActionBase : public DecisionNodeBase, public ProductConsumerBase, public ProductProviderBase {
+  class TransitionStateForActionBase : public DecisionNodeBase, public ProductConsumerSingleBase<>, public ProductProviderBase {
   public:
     TransitionStateForActionBase() = default;
     ~TransitionStateForActionBase() override = default;
@@ -23,7 +24,7 @@ namespace edm {
 
     void resetForNewTransition() {
       DecisionNodeBase::resetForNewTransition();
-      ProductConsumerBase::resetConsumerForNewTransition();
+      ProductConsumerSingleBase<>::resetConsumerForNewTransition();
       // ProductProviderBase has no state to reset
       waitingConditionsToRun_.store(2, std::memory_order_release);
       reset_();
