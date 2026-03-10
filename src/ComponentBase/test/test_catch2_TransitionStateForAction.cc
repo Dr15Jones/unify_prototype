@@ -2,8 +2,8 @@
 #include "catch2/catch.hpp"
 #include "oneapi/tbb/global_control.h"
 
-#include "ComponentBase/ReentrantTransitionStateForAction.h"
-#include "ComponentBase/ExternalWorkTransitionStateForAction.h"
+#include "ComponentBase/TransitionStateForReentrantAction.h"
+#include "ComponentBase/TransitionStateForExternalWorkAction.h"
 #include "Concurrency/FinalWaitingTask.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "ProductHandling/TransitionContext.h"
@@ -92,7 +92,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
   SECTION("Reentrant") {
     SECTION("Simple Action Consumed") {
       edm::TransitionContext context;
-      edm::ReentrantTransitionStateForAction<SimpleAction> actionState{SimpleAction()};
+      edm::TransitionStateForReentrantAction<SimpleAction> actionState{SimpleAction()};
 
       edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});
       edm::TransitionProviderContext providerContext;
@@ -114,7 +114,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
 
     SECTION("Simple Action Decision") {
       edm::TransitionContext context;
-      edm::ReentrantTransitionStateForAction<SimpleAction> actionState{SimpleAction()};
+      edm::TransitionStateForReentrantAction<SimpleAction> actionState{SimpleAction()};
 
       edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});
       edm::TransitionProviderContext providerContext;
@@ -140,7 +140,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::TransitionContext context;
       std::atomic<bool> acquireCalled{false};
       std::atomic<bool> workCalled{false};
-      edm::ExternalWorkTransitionStateForAction<SimpleExternalWorkAction> actionState{
+      edm::TransitionStateForExternalWorkAction<SimpleExternalWorkAction> actionState{
           SimpleExternalWorkAction(&acquireCalled, &workCalled)};
 
       edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});
@@ -168,7 +168,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       std::atomic<bool> acquireCalled{false};
       std::atomic<bool> workCalled{false};
 
-      edm::ExternalWorkTransitionStateForAction<SimpleExternalWorkAction> actionState{
+      edm::TransitionStateForExternalWorkAction<SimpleExternalWorkAction> actionState{
           SimpleExternalWorkAction(&acquireCalled, &workCalled)};
 
       edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});

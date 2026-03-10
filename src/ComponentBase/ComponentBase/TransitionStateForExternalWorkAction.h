@@ -1,16 +1,15 @@
-#ifndef ComponentBase_ReentrantTransitionStateForAction_h
-#define ComponentBase_ReentrantTransitionStateForAction_h
+#ifndef ComponentBase_TransitionStateForExternalWorkAction_h
+#define ComponentBase_TransitionStateForExternalWorkAction_h
 #include "ComponentBase/TransitionStateForActionSingleBase.h"
-#include "ProductHandling/TransitionProcessingContext.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "Concurrency/WaitingTask.h"
 
 namespace edm {
   template <typename T>
-  class ReentrantTransitionStateForAction : public TransitionStateForActionSingleBase {
+  class TransitionStateForExternalWorkAction : public TransitionStateForActionSingleBase {
   public:
-    explicit ReentrantTransitionStateForAction(T&& iAction) : action_(std::forward<T>(iAction)) {}
-    ~ReentrantTransitionStateForAction() override = default;
+    explicit TransitionStateForExternalWorkAction(T&& iAction) : action_(std::forward<T>(iAction)) {}
+    ~TransitionStateForExternalWorkAction() override = default;
 
     // ProductConsumerBase interface
     TransitionRecordKey reactsToRecord() const override { return action_.reactsToRecord(); }
@@ -29,17 +28,29 @@ namespace edm {
     /// the derived class must call doneWorkAsync to notify completion
     void workAsync(WaitingTaskHolder task, TransitionProcessingContext const& context) final {
       task.group()->run([this, task = std::move(task), &context]() {
-        ActionResult result;
+        auto postTask = edm::make_waiting_task([this, &context, task](std::exception_ptr const* eptr) {
+          ActionResult result;
+          if (eptr and *eptr) {
+            result.setStatus(ActionResultStatus::EXCEPTION);
+          } else {
+            try {
+              result = action_.work(context.transitionContext());
+            } catch (...) {
+              result.setStatus(ActionResultStatus::EXCEPTION);
+            }
+          }
+          doneWorkAsync(std::move(task), context, result);
+        });
+
         try {
-          result = action_.work(context.transitionContext());
+          action_.acquire(context.transitionContext(), WaitingTaskHolder(*task.group(), postTask));
         } catch (...) {
-          result.setStatus(ActionResultStatus::EXCEPTION);
+          edm::ActionResult result(ActionResultStatus::EXCEPTION);
           WaitingTaskHolder localTask(task);
           localTask.doneWaiting(std::current_exception());
           doneWorkAsync(std::move(localTask), context, result);
           return;
         }
-        doneWorkAsync(std::move(task), context, result);
       });
     }
 
