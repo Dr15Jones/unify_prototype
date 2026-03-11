@@ -14,12 +14,12 @@ namespace edm {
     StartDecisionGraph() = default;
     virtual ~StartDecisionGraph() final = default;
 
-    void startAsync(WaitingTaskHolder task, TransitionProcessingContext const & context);
+    void startAsync(WaitingTaskHolder task, TransitionProcessingContext & context);
 
     void addLeafNode(DecisionNodeBase* iLeaf);
 
     void decisionFromNodeAsync(WaitingTaskHolder task,
-                               TransitionProcessingContext const & context,
+                               TransitionProcessingContext & context,
                                void const* nodeHash,
                                ControlFlowStatus decision) final;
 

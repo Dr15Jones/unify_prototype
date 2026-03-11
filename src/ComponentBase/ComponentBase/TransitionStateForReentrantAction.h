@@ -27,7 +27,7 @@ namespace edm {
   protected:
     /// @brief The actual work to be done by the action. Once the work is done
     /// the derived class must call doneWorkAsync to notify completion
-    void workAsync(WaitingTaskHolder task, TransitionProcessingContext const& context) final {
+    void workAsync(WaitingTaskHolder task, TransitionProcessingContext& context) final {
       task.group()->run([this, task = std::move(task), &context]() {
         ActionResult result;
         try {

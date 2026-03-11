@@ -29,7 +29,7 @@ namespace edm {
     virtual ~DecisionNodeBase() = default;
 
     void addRequestorForDecision(DecisionRequestorBase* iReq) { requestors_.push_back(iReq); }
-    void requestDecisionAsync(WaitingTaskHolder iTask, TransitionProcessingContext const & iContext, RequestState state);
+    void requestDecisionAsync(WaitingTaskHolder iTask, TransitionProcessingContext & iContext, RequestState state);
     void resetForNewTransition() {
       if (requestors_.empty()) {
         runStatus_ = RunStatus::SHOULD_RUN;
@@ -45,13 +45,13 @@ namespace edm {
 
   protected:
     void sendDecisionToRequestorsAsync_(WaitingTaskHolder task,
-                                        TransitionProcessingContext const & context,
+                                        TransitionProcessingContext & context,
                                         ControlFlowStatus decision);
     void setInProgressForDiagnostics() { runStatus_ = RunStatus::IN_PROGRESS; }
     void setCompletedForDiagnostics() { runStatus_ = RunStatus::COMPLETED; }
     RunStatus runStatus() const { return runStatus_; }
   private:
-    virtual void makeDecisionAsync_(WaitingTaskHolder task, TransitionProcessingContext const & context, RequestState state) = 0;
+    virtual void makeDecisionAsync_(WaitingTaskHolder task, TransitionProcessingContext & context, RequestState state) = 0;
 
     RunStatus runStatus_;
     std::vector<DecisionRequestorBase*> requestors_;

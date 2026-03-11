@@ -4,7 +4,7 @@
 #include "Concurrency/WaitingTaskHolder.h"
 
 namespace edm {
-  void ProductProviderBase::provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext const & context, ProductConsumerBase* consumer) {
+  void ProductProviderBase::provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext & context, ProductConsumerBase* consumer) {
     bool expectedRequested_ = false;
     if( requested_.compare_exchange_strong(expectedRequested_, true) ) {
       provideProductRequestAsync(task, context);
@@ -21,7 +21,7 @@ namespace edm {
     }
   }
 
-  void ProductProviderBase::notifyConsumersProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) {
+  void ProductProviderBase::notifyConsumersProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext & context) {
     ProductConsumerBase* consumer;
     productsAvailable_ = true;
     while( waitingConsumers_.try_pop(consumer) ) {

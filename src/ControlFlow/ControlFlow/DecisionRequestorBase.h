@@ -8,7 +8,7 @@ namespace edm {
   class TransitionProcessingContext;
   class DecisionRequestorBase {
   public:
-    virtual void decisionFromNodeAsync(WaitingTaskHolder, TransitionProcessingContext const &, void const*, ControlFlowStatus) = 0;
+    virtual void decisionFromNodeAsync(WaitingTaskHolder, TransitionProcessingContext &, void const*, ControlFlowStatus) = 0;
   };
 }  // namespace edm
 

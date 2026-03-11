@@ -2,7 +2,7 @@
 
 namespace edm {
   void TransitionStateForActionSingleBase::makeDecisionAsync_(WaitingTaskHolder task,
-                                                              TransitionProcessingContext const& context,
+                                                              TransitionProcessingContext& context,
                                                               RequestState state) {
     if (state == RequestState::REQUEST_DECISION) {
       bool shouldRun = checkIfShouldRunAsync(task, context);
@@ -15,7 +15,7 @@ namespace edm {
   }
 
   bool TransitionStateForActionSingleBase::checkIfShouldRunAsync(WaitingTaskHolder task,
-                                                                 TransitionProcessingContext const& context) {
+                                                                 TransitionProcessingContext& context) {
     unsigned int prev = waitingConditionsToRun_.fetch_sub(1, std::memory_order_acq_rel);
     if (not makeDecisionWillBeCalled()) {
       // No decision to be made, so we can consider that condition satisfied
@@ -30,19 +30,19 @@ namespace edm {
   }
 
   void TransitionStateForActionSingleBase::provideProductRequestAsync(WaitingTaskHolder task,
-                                                                      TransitionProcessingContext const& context) {
+                                                                      TransitionProcessingContext& context) {
     if (not checkIfShouldRunAsync(task, context)) {
       requestActionAsync(std::move(task), context);
     }
   }
 
   void TransitionStateForActionSingleBase::willNotRunAsync(WaitingTaskHolder task,
-                                                           TransitionProcessingContext const& context) {
+                                                           TransitionProcessingContext& context) {
     notifyConsumersProductsAvailableAsync(task, context);
   }
 
   void TransitionStateForActionSingleBase::doneWorkAsync(WaitingTaskHolder task,
-                                                         TransitionProcessingContext const& context,
+                                                         TransitionProcessingContext& context,
                                                          ActionResult result) {
     setCompletedForDiagnostics();
     edm::ControlFlowStatus status = edm::ControlFlowStatus::NOT_STARTED;
@@ -58,7 +58,7 @@ namespace edm {
   }
 
   void TransitionStateForActionSingleBase::reactToAllProductsAvailableAsync(
-      WaitingTaskHolder task, TransitionProcessingContext const& context) {
+      WaitingTaskHolder task, TransitionProcessingContext& context) {
     (void)checkIfShouldRunAsync(task, context);
   }
 

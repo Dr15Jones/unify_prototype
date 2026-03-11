@@ -69,7 +69,8 @@ namespace {
     std::vector<edm::ProductKey> productsConsumed(edm::TransitionRecordKey const&) const override {
       return {edm::ProductKey::makeKey<int>("module", "instance", "process")};
     }
-    void reactToAllProductsAvailableAsync(edm::WaitingTaskHolder task, edm::TransitionProcessingContext const & context) override {
+    void reactToAllProductsAvailableAsync(edm::WaitingTaskHolder task,
+                                          edm::TransitionProcessingContext& context) override {
       wasCalled = true;
     }
   };
@@ -78,7 +79,7 @@ namespace {
   public:
     std::atomic<bool> wasCalled{false};
     void decisionFromNodeAsync(edm::WaitingTaskHolder,
-                               edm::TransitionProcessingContext const &,
+                               edm::TransitionProcessingContext&,
                                void const*,
                                edm::ControlFlowStatus) final {
       wasCalled = true;
@@ -104,7 +105,9 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::FinalWaitingTask waitTask{group};
 
       TrivialConsumer consumer;
-      consumer.addProviderForProducts(actionState.recordForProductsProvided(), actionState.productsProvided().front(), providers.indexForProvider(&actionState));
+      consumer.addProviderForProducts(actionState.recordForProductsProvided(),
+                                      actionState.productsProvided().front(),
+                                      providers.indexForProvider(&actionState));
       consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());
@@ -153,7 +156,9 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::FinalWaitingTask waitTask{group};
 
       TrivialConsumer consumer;
-      consumer.addProviderForProducts(actionState.recordForProductsProvided(), actionState.productsProvided().front(), providers.indexForProvider(&actionState));
+      consumer.addProviderForProducts(actionState.recordForProductsProvided(),
+                                      actionState.productsProvided().front(),
+                                      providers.indexForProvider(&actionState));
       consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());

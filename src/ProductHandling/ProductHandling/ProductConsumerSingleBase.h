@@ -38,7 +38,7 @@ namespace edm {
     }
 
     /// @brief Called by a provider to notify that data products are available
-    void notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const& context) override {
+    void notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext& context) override {
       size_t doneCount = providersDoneCount.fetch_add(1, std::memory_order_acq_rel) + 1;
       if (doneCount == providers_.size()) {
         reactToAllProductsAvailableAsync(task, context);
@@ -49,7 +49,7 @@ namespace edm {
     /// will trigger requests to all providers if products are not yet available
     /// @param task
     /// @param context
-    void requestActionAsync(WaitingTaskHolder task, TransitionProcessingContext const& context) override {
+    void requestActionAsync(WaitingTaskHolder task, TransitionProcessingContext& context) override {
       bool expected = false;
       if (haveRequestedProducts_.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
         if (not areAllProductsAvaliable()) {
@@ -69,7 +69,7 @@ namespace edm {
       }
     }
 
-    void resetConsumerForNewTransition() override {
+    void resetConsumerForNewTransition() final {
       providersDoneCount.store(0, std::memory_order_release);
       haveRequestedProducts_.store(false, std::memory_order_release);
       resetConsumer_();
@@ -84,7 +84,7 @@ namespace edm {
     /// @param task
     /// @param context
     virtual void reactToAllProductsAvailableAsync(WaitingTaskHolder task,
-                                                  TransitionProcessingContext const& context) = 0;
+                                                  TransitionProcessingContext& context) = 0;
     std::vector<std::pair<TransitionRecordKey, TransitionProductProviderIndex>> providers_;
     std::atomic<size_t> providersDoneCount{0};
     std::atomic<bool> haveRequestedProducts_{false};

@@ -4,7 +4,7 @@
 
 namespace edm {
   void DecisionNodeBase::requestDecisionAsync(WaitingTaskHolder iTask,
-                                              TransitionProcessingContext const & iContext,
+                                              TransitionProcessingContext & iContext,
                                               RequestState iState) {
     if (iState == RequestState::REQUEST_DECISION) {
       //This need to be thread safe against multiple requestors calling requestingDecisionAsync
@@ -24,7 +24,7 @@ namespace edm {
     }
   }
   void DecisionNodeBase::sendDecisionToRequestorsAsync_(WaitingTaskHolder iTask,
-                                                        TransitionProcessingContext const & iContext,
+                                                        TransitionProcessingContext & iContext,
                                                         ControlFlowStatus iDecision) {
     //This should be called once the task started from decisionRequestedAsync_ has the final decision
     if (runStatus_ != RunStatus::WILL_NOT_RUN) {

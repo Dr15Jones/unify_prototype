@@ -23,7 +23,7 @@ namespace pcptest {
       return {edm::ProductKey::makeKey<int>("moduleA", "instanceA", "processA")};
     }
 
-    void provideProductRequestAsync(edm::WaitingTaskHolder task, edm::TransitionProcessingContext const & context) override {
+    void provideProductRequestAsync(edm::WaitingTaskHolder task, edm::TransitionProcessingContext & context) override {
       // Simulate providing products asynchronously
       task.group()->run([this, task = std::move(task), &context]() {
         // Simulate some processing delay
@@ -45,7 +45,7 @@ namespace pcptest {
     std::vector<edm::ProductKey> productsConsumed(edm::TransitionRecordKey const&) const override {
       return {edm::ProductKey::makeKey<int>("moduleA", "instanceA", "processA")};
     }
-    void reactToAllProductsAvailableAsync(edm::WaitingTaskHolder task, edm::TransitionProcessingContext const & context) override {
+    void reactToAllProductsAvailableAsync(edm::WaitingTaskHolder task, edm::TransitionProcessingContext & context) override {
       task.group()->run([this, task = std::move(task), &context]() {
         // Simulate processing the available products
         productsAvailableNotified_ = true;

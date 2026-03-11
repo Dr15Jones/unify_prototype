@@ -36,13 +36,13 @@ namespace edm {
     virtual void addProviderForProducts(TransitionRecordKey iTrans, ProductKey, TransitionProductProviderIndex iIndex) = 0;
 
     /// @brief Called by a provider to notify that data products are available
-    virtual void notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) = 0;
+    virtual void notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext & context) = 0;
 
     /// @brief Called by the scheduler when the consumer's action is to be performed maybe called several times
     /// will trigger requests to all providers if products are not yet available
     /// @param task
     /// @param context
-    virtual void requestActionAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) = 0;
+    virtual void requestActionAsync(WaitingTaskHolder task, TransitionProcessingContext & context) = 0;
 
     virtual void resetConsumerForNewTransition() = 0;  
   };

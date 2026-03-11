@@ -12,26 +12,26 @@ namespace edm {
   protected:
     /// @brief Must be called by derived classes when task started by workAsync is done
     /// @param result the result of the action
-    void doneWorkAsync(WaitingTaskHolder task, TransitionProcessingContext const& context, ActionResult result);
+    void doneWorkAsync(WaitingTaskHolder task, TransitionProcessingContext& context, ActionResult result);
 
   private:
     // ProductConsumerBase interface
-    void reactToAllProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const& context) final;
+    void reactToAllProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext& context) final;
     // ProductProviderBase interface
-    void provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext const& context) final;
+    void provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext& context) final;
 
     // DecisionNodeBase interface
     void makeDecisionAsync_(WaitingTaskHolder task,
-                            TransitionProcessingContext const& context,
+                            TransitionProcessingContext& context,
                             RequestState state) final;
-    void willNotRunAsync(WaitingTaskHolder task, TransitionProcessingContext const& context);
+    void willNotRunAsync(WaitingTaskHolder task, TransitionProcessingContext& context);
     /// @brief Checks conditions to decide if workAsync should be called
     /// @return true if workAsync was called
-    bool checkIfShouldRunAsync(WaitingTaskHolder task, TransitionProcessingContext const& context);
+    bool checkIfShouldRunAsync(WaitingTaskHolder task, TransitionProcessingContext& context);
 
     /// @brief The actual work to be done by the action. Once the work is done
     /// the derived class must call doneWorkAsync to notify completion
-    virtual void workAsync(WaitingTaskHolder task, TransitionProcessingContext const& context) = 0;
+    virtual void workAsync(WaitingTaskHolder task, TransitionProcessingContext& context) = 0;
 
     void resetAction_() final;
     virtual void reset_() {};

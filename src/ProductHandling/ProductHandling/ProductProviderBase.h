@@ -37,7 +37,7 @@ namespace edm {
     /// @brief Called by a consumer to request the data products
     /// @param task
     /// @param context
-    void provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext const & context, ProductConsumerBase* consumer);
+    void provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext & context, ProductConsumerBase* consumer);
 
     void resetProvider();
 
@@ -45,8 +45,8 @@ namespace edm {
     /// @brief Call when products are available to notify consumers. This must be called once an only once per transition
     /// @param task
     /// @param context
-    void notifyConsumersProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext const & context);
-    virtual void provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext const & context) = 0;
+    void notifyConsumersProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext & context);
+    virtual void provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext & context) = 0;
 
   private:
     virtual void resetProvider_() {}
