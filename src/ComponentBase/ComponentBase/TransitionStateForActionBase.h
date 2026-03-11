@@ -29,6 +29,16 @@ namespace edm {
     }
 
   private:
+    // ProductConsumerBase interface
+    //void notifyProductsAvailableAsync(WaitingTaskHolder task, TransitionProcessingContext & context) override =0 ;
+    // ProductProviderBase interface
+    //void provideProductRequestAsync(WaitingTaskHolder task, TransitionProcessingContext& context) override = 0;
+
+    // DecisionNodeBase interface
+    //void makeDecisionAsync_(WaitingTaskHolder task,
+    //                        TransitionProcessingContext& context,
+    //                        RequestState state) override = 0;
+
     virtual void resetAction_() = 0;
   };
 }  // namespace edm
