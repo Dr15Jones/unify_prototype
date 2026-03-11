@@ -12,12 +12,14 @@ namespace edm {
     public:
     TransitionContext() = default;
 
-    void insert(TransitionRecordImpl const& record);
+    void insert(TransitionRecordImpl& record);
 
     TransitionRecordImpl const* get(TransitionRecordKey const& key) const;
-  
+
+    TransitionRecordImpl* get(TransitionRecordKey const& key);
+
   private:
-    std::map<TransitionRecordKey, TransitionRecordImpl const*> records_;
+    std::map<TransitionRecordKey, TransitionRecordImpl*> records_;
   };
 }  // namespace edm
 
