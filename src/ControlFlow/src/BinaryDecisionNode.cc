@@ -2,9 +2,9 @@
 #include "Concurrency/WaitingTaskHolder.h"
 
 namespace edm {
-  BinaryDecisionNode::BinaryDecisionNode(std::shared_ptr<DecisionNodeBase>& iLeft,
-                                         std::shared_ptr<DecisionNodeBase>& iRight)
-      : leftNode_{iLeft}, rightNode_{iRight} {
+  BinaryDecisionNode::BinaryDecisionNode(std::shared_ptr<DecisionNodeBase> iLeft,
+                                         std::shared_ptr<DecisionNodeBase> iRight)
+      : leftNode_{std::move(iLeft)}, rightNode_{std::move(iRight)} {
     leftNode_->addRequestorForDecision(this);
     rightNode_->addRequestorForDecision(this);
   }

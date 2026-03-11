@@ -15,7 +15,7 @@ If any requestor decides EXCEPTION, the decision is EXCEPTION.
 namespace edm {
   class BinaryDecisionNode : public DecisionNodeBase, public DecisionRequestorBase {
   public:
-    BinaryDecisionNode(std::shared_ptr<DecisionNodeBase>& iLeft, std::shared_ptr<DecisionNodeBase>& iRight);
+    BinaryDecisionNode(std::shared_ptr<DecisionNodeBase> iLeft, std::shared_ptr<DecisionNodeBase> iRight);
     ~BinaryDecisionNode() override = default;
     void decisionFromNodeAsync(WaitingTaskHolder task,
                                         TransitionProcessingContext & context,

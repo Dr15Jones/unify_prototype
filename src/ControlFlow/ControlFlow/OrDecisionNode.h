@@ -13,7 +13,7 @@ If any requestor decides EXCEPTION, the decision is EXCEPTION.
 namespace edm {
   class OrDecisionNode : public BinaryDecisionNode {
   public:
-    OrDecisionNode(std::shared_ptr<DecisionNodeBase>& iLeft, std::shared_ptr<DecisionNodeBase>& iRight):
+    OrDecisionNode(std::shared_ptr<DecisionNodeBase> iLeft, std::shared_ptr<DecisionNodeBase> iRight):
       BinaryDecisionNode(iLeft, iRight) {}
     virtual ~OrDecisionNode() final = default;
     private:
