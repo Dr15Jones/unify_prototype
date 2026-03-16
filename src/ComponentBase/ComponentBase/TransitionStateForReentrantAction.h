@@ -9,7 +9,8 @@ namespace edm {
   template <typename T>
   class TransitionStateForReentrantAction : public TransitionStateForActionSingleBase {
   public:
-    explicit TransitionStateForReentrantAction(T&& iAction) : action_(std::forward<T>(iAction)) {}
+    template<typename... Args>
+    explicit TransitionStateForReentrantAction(Args&&... iArgs) : action_(std::forward<Args>(iArgs)...) {}
     ~TransitionStateForReentrantAction() override = default;
 
     // ProductConsumerBase interface
