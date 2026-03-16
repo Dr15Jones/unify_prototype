@@ -4,12 +4,18 @@
 
 #include "ComponentBase/TransitionStateForReentrantAction.h"
 #include "ComponentBase/TransitionStateForExternalWorkAction.h"
+#include "ComponentBase/TransitionStateForConditionalAction.h"
 #include "Concurrency/FinalWaitingTask.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "ProductHandling/TransitionContext.h"
 #include "ProductHandling/TransitionProcessingContext.h"
 #include "ProductHandling/TransitionProviderContext.h"
+#include "ProductHandling/ProductTransitionRecordIndexHelper.h"
+#include "ProductHandling/ProductsProvider.h"
+#include "ProductHandling/ProductTransitionRecordIndexHelpersBuilder.h"
 #include "ControlFlow/DecisionRequestorBase.h"
+#include "ControlFlow/StartDecisionGraph.h"
+#include "DataProductBase/Wrapper.h"
 
 namespace {
   struct SimpleAction {
@@ -75,7 +81,7 @@ namespace {
     }
   };
 
-  class TrvialRequester : public edm::DecisionRequestorBase {
+  class TrivialRequester : public edm::DecisionRequestorBase {
   public:
     std::atomic<bool> wasCalled{false};
     void decisionFromNodeAsync(edm::WaitingTaskHolder,
@@ -85,6 +91,118 @@ namespace {
       wasCalled = true;
     }
   };
+
+  struct TriggerResults {
+    bool accept = true;
+  };
+
+  struct DummyProduct {};
+  struct TriggerResultsAction {
+    TriggerResults& results_;
+    edm::ProductTransitionRecordIndex& putIndex_;
+
+    TriggerResultsAction(TriggerResults& results, edm::ProductTransitionRecordIndex& putIndex)
+        : results_(results), putIndex_(putIndex) {}
+    edm::TransitionRecordKey reactsToRecord() const { return edm::TransitionRecordKey::makeKey<int>(); }
+    std::vector<edm::TransitionRecordKey> recordForProductsConsumed() const { return {}; }
+
+    std::vector<edm::ProductKey> productsConsumed(edm::TransitionRecordKey const&) const { return {}; }
+    edm::TransitionRecordKey recordForProductsProvided() const { return edm::TransitionRecordKey::makeKey<int>(); }
+
+    std::vector<edm::ProductKey> productsProvided() const {
+      return {edm::ProductKey::makeKey<TriggerResults>("triggerResults", "", "process")};
+    }
+
+    edm::ActionResult work(edm::TransitionContext& context) {
+      // Simulate some work
+      context.get(edm::TransitionRecordKey::makeKey<int>())
+          ->put(putIndex_, std::make_unique<edm::Wrapper<TriggerResults>>(results_));
+      return edm::ActionResult(edm::ActionResultStatus::ACCEPT);
+    }
+  };
+
+  struct DummyProductAction {
+    edm::ProductTransitionRecordIndex& putIndex_;
+
+    DummyProductAction(edm::ProductTransitionRecordIndex& putIndex) : putIndex_(putIndex) {}
+    edm::TransitionRecordKey reactsToRecord() const { return edm::TransitionRecordKey::makeKey<int>(); }
+    std::vector<edm::TransitionRecordKey> recordForProductsConsumed() const { return {}; }
+
+    std::vector<edm::ProductKey> productsConsumed(edm::TransitionRecordKey const&) const { return {}; }
+    edm::TransitionRecordKey recordForProductsProvided() const { return edm::TransitionRecordKey::makeKey<int>(); }
+
+    std::vector<edm::ProductKey> productsProvided() const {
+      return {edm::ProductKey::makeKey<DummyProduct>("dummy", "", "process")};
+    }
+
+    edm::ActionResult work(edm::TransitionContext& context) {
+      // Simulate some work
+      context.get(edm::TransitionRecordKey::makeKey<int>())
+          ->put(putIndex_, std::make_unique<edm::Wrapper<DummyProduct>>(DummyProduct()));
+      return edm::ActionResult(edm::ActionResultStatus::ACCEPT);
+    }
+  };
+
+  struct TriggerResultsFilterAction {
+    edm::ProductTransitionRecordIndex& getIndex_;
+
+    TriggerResultsFilterAction(edm::ProductTransitionRecordIndex& getIndex) : getIndex_(getIndex) {}
+    edm::TransitionRecordKey reactsToRecord() const { return edm::TransitionRecordKey::makeKey<int>(); }
+    std::vector<edm::TransitionRecordKey> recordForProductsConsumed() const {
+      return {edm::TransitionRecordKey::makeKey<int>()};
+    }
+
+    std::vector<edm::ProductKey> productsConsumed(edm::TransitionRecordKey const&) const {
+      return {edm::ProductKey::makeKey<TriggerResults>("triggerResults", "", "process")};
+    }
+    edm::TransitionRecordKey recordForProductsProvided() const { return {}; }
+
+    std::vector<edm::ProductKey> productsProvided() const { return {}; }
+
+    edm::ActionResult work(edm::TransitionContext& context) {
+      // Simulate some work
+      auto wrapper = context.get(edm::TransitionRecordKey::makeKey<int>())->get(getIndex_);
+      assert(wrapper);
+      auto const& triggerResults = dynamic_cast<edm::Wrapper<TriggerResults> const*>(wrapper)->product();
+      return edm::ActionResult(triggerResults.accept ? edm::ActionResultStatus::ACCEPT
+                                                     : edm::ActionResultStatus::REJECT);
+    }
+  };
+
+  struct WriteAction {
+    bool& wasCalled_;
+    edm::ProductTransitionRecordIndex& getIndex_;
+
+    WriteAction(bool& wasCalled, edm::ProductTransitionRecordIndex& getIndex)
+        : wasCalled_(wasCalled), getIndex_(getIndex) {}
+    edm::TransitionRecordKey reactsToRecord() const { return edm::TransitionRecordKey::makeKey<int>(); }
+    std::vector<edm::TransitionRecordKey> recordForProductsConsumed() const {
+      return {edm::TransitionRecordKey::makeKey<int>()};
+    }
+
+    std::vector<edm::ProductKey> productsConsumed(edm::TransitionRecordKey const&) const {
+      return {edm::ProductKey::makeKey<DummyProduct>("dummy", "", "process")};
+    }
+    edm::TransitionRecordKey recordForProductsProvided() const { return {}; }
+
+    std::vector<edm::ProductKey> productsProvided() const { return {}; }
+
+    edm::ActionResult work(edm::TransitionContext& context) {
+      // Simulate some work
+      wasCalled_ = true;
+      return edm::ActionResult(edm::ActionResultStatus::ACCEPT);
+    }
+  };
+
+  struct SimpleProductProviders : public edm::ProductsProvider {
+    SimpleProductProviders(edm::TransitionRecordKey key, std::vector<edm::ProductKey> products)
+        : key_(key), products_(products) {}
+    std::vector<edm::TransitionRecordKey> resolverRecords() const final { return {key_}; }
+    std::vector<edm::ProductKey> productKeysForRecord(edm::TransitionRecordKey const&) const final { return products_; }
+    edm::TransitionRecordKey key_;
+    std::vector<edm::ProductKey> products_;
+  };
+
 }  // namespace
 
 TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
@@ -100,7 +218,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       providerContext.insert(providers);
 
       edm::TransitionProcessingContext processingContext(context, providerContext);
-      
+
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};
 
@@ -128,7 +246,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};
 
-      TrvialRequester requester;
+      TrivialRequester requester;
       actionState.addRequestorForDecision(&requester);
       actionState.requestDecisionAsync(
           edm::WaitingTaskHolder(group, &waitTask), processingContext, edm::RequestState::REQUEST_DECISION);
@@ -185,7 +303,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};
 
-      TrvialRequester requester;
+      TrivialRequester requester;
       actionState.addRequestorForDecision(&requester);
       actionState.requestDecisionAsync(
           edm::WaitingTaskHolder(group, &waitTask), processingContext, edm::RequestState::REQUEST_DECISION);
@@ -195,6 +313,73 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       REQUIRE(requester.wasCalled.load() == true);
       REQUIRE(acquireCalled.load() == true);
       REQUIRE(workCalled.load() == true);
+    }
+  }
+  SECTION("Conditional") {
+    edm::TransitionContext context;
+    TriggerResults results;
+    edm::ProductTransitionRecordIndex triggerIndex;
+    edm::TransitionStateForReentrantAction<TriggerResultsAction> triggerAction{results, triggerIndex};
+
+    edm::ProductTransitionRecordIndex dummyIndex;
+    edm::TransitionStateForReentrantAction<DummyProductAction> dummyAction{dummyIndex};
+
+    SimpleProductProviders triggerProviders(triggerAction.recordForProductsProvided(),
+                                            triggerAction.productsProvided());
+    SimpleProductProviders dummyProviders(dummyAction.recordForProductsProvided(), dummyAction.productsProvided());
+    edm::ProductTransitionRecordIndexHelpersBuilder builder;
+    builder.determineProductsFrom(triggerProviders);
+    builder.determineProductsFrom(dummyProviders);
+    builder.finalize({"process"});
+
+    auto helper = builder.helperFor(triggerAction.recordForProductsProvided());
+    triggerIndex = helper->getIndex(triggerAction.productsProvided().front());
+    dummyIndex = helper->getIndex(dummyAction.productsProvided().front());
+    edm::TransitionRecordImpl record(edm::TransitionRecordKey::makeKey<int>(), helper, 0);
+    context.insert(record);
+
+    edm::TransitionProductProviders providers(triggerAction.recordForProductsProvided(),
+                                              {&triggerAction, &dummyAction});
+    edm::TransitionProviderContext providerContext;
+    providerContext.insert(providers);
+
+    edm::TransitionProcessingContext processingContext(context, providerContext);
+
+    auto filter = std::make_unique<edm::TransitionStateForReentrantAction<TriggerResultsFilterAction>>(triggerIndex);
+    auto triggerProvIndex = providerContext.get(triggerAction.reactsToRecord())->indexForProvider(&triggerAction);
+    filter->addProviderForProducts(
+        triggerAction.recordForProductsProvided(), triggerAction.productsProvided().front(), triggerProvIndex);
+    bool writeWasCalled = false;
+    auto write = std::make_unique<edm::TransitionStateForReentrantAction<WriteAction>>(writeWasCalled, dummyIndex);
+    write->addProviderForProducts(dummyAction.recordForProductsProvided(),
+                                  dummyAction.productsProvided().front(),
+                                  providerContext.get(dummyAction.reactsToRecord())->indexForProvider(&dummyAction));
+    edm::TransitionStateForConditionalAction conditionState{std::move(filter), std::move(write)};
+
+    edm::StartDecisionGraph startGraph;
+    startGraph.addLeafNode(&conditionState);
+    {
+      oneapi::tbb::task_group group;
+      edm::FinalWaitingTask waitTask{group};
+      startGraph.startAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
+      waitTask.waitNoThrow();
+      REQUIRE(waitTask.done());
+      REQUIRE(not waitTask.exceptionPtr());
+      REQUIRE(writeWasCalled == true);
+    }
+    {
+      writeWasCalled = false;
+      results.accept = false;
+      triggerAction.resetForNewTransition();
+      dummyAction.resetForNewTransition();
+      conditionState.resetForNewTransition();
+      oneapi::tbb::task_group group;
+      edm::FinalWaitingTask waitTask{group};
+      startGraph.startAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
+      waitTask.waitNoThrow();
+      REQUIRE(waitTask.done());
+      REQUIRE(not waitTask.exceptionPtr());
+      REQUIRE(writeWasCalled == false);
     }
   }
 }
