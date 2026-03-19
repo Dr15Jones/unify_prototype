@@ -1,5 +1,4 @@
 #include "ProductHandling/ProductConsumerBase.h"
-#include "ProductHandling/ProductProviderBase.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "DataModel/TransitionRecordKey.h"
 #include "ProductHandling/TransitionProcessingContext.h"
