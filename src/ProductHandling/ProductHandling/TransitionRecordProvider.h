@@ -19,8 +19,6 @@ namespace edm {
                                       std::shared_ptr<ProductTransitionRecordIndexHelper>,
                                       unsigned int allowedConcurrency);
 
-    void addResolversFrom(ProductsProvider& provider);
-
     TransitionRecordKey const& key() const { return key_; }
   private:
     std::shared_ptr<ProductTransitionRecordIndexHelper> helper_;

@@ -6,7 +6,3 @@
 edm::TransitionRecordProvider::TransitionRecordProvider(TransitionRecordKey key, std::shared_ptr<ProductTransitionRecordIndexHelper> iHelper, unsigned int allowedConcurrency):
     key_(std::move(key)), helper_(iHelper), allowedConcurrency_(allowedConcurrency) {
 }
-
-void edm::TransitionRecordProvider::addResolversFrom(ProductsProvider& provider){
-    
-}
