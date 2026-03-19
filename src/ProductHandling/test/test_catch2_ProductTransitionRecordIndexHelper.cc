@@ -1,6 +1,6 @@
 #include <catch2/catch.hpp>
 #include "ProductHandling/ProductTransitionRecordIndexHelper.h"
-#include "ProductHandling/ProductTransitionRecordIndexHelpersBuilder.h"
+#include "ProductHandling/TransitionRecordIndexHelpersBuilder.h"
 #include "ProductHandling/ProductsProvider.h"
 
 namespace prihtest {
@@ -15,10 +15,19 @@ namespace prihtest {
     std::vector<edm::TransitionRecordKey> resolverRecords() const override {
       return {edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>()};
     }
-    std::vector<edm::ProductKey> productKeysForRecord(edm::TransitionRecordKey const&) const override {
-      return {edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess")};
-    }
 
+    unsigned int numberOfProvidersForRecord(edm::TransitionRecordKey const& record) const override {
+      if (record == edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>()) {
+        return 1;
+      }
+      return 0;
+    }
+    std::vector<edm::ProductKey> productsFromProvider(edm::TransitionRecordKey const& record, unsigned int providerIndex) const override {
+      if (record == edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>() && providerIndex == 0) {
+        return {edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess")};
+      }
+      return {};
+    }
   private:
     std::vector<edm::ProductKey> keys_;
   };
@@ -26,14 +35,14 @@ namespace prihtest {
 }  // namespace prihtest
 
 using namespace prihtest;
-TEST_CASE("ProductTransitionRecordIndexHelpersBuilder", "[ProductTransitionRecordIndexHelpersBuilder]") {
+TEST_CASE("TransitionRecordIndexHelpersBuilder", "[TransitionRecordIndexHelpersBuilder]") {
   SECTION("Determine Products from Provider") {
     MockProductsProvider provider;  // Assume this is properly implemented
     provider.addProductKey(
         edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess"));
-    edm::ProductTransitionRecordIndexHelpersBuilder builder;
+    edm::TransitionRecordIndexHelpersBuilder builder;
 
-    builder.determineProductsFrom(provider);
+    builder.determineProductsFrom(edm::ProvidersKey("dummyModule"), provider);
 
     auto usedRecords = builder.usedRecords();
     REQUIRE(!usedRecords.empty());
@@ -43,9 +52,9 @@ TEST_CASE("ProductTransitionRecordIndexHelpersBuilder", "[ProductTransitionRecor
       MockProductsProvider provider;  // Assume this is properly implemented
       auto prodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess");
       provider.addProductKey(prodKey);
-      edm::ProductTransitionRecordIndexHelpersBuilder builder;
+      edm::TransitionRecordIndexHelpersBuilder builder;
 
-      builder.determineProductsFrom(provider);
+      builder.determineProductsFrom(edm::ProvidersKey("dummyModule"), provider);
       builder.finalize({"dummyProcess"});
 
       auto helper = builder.helperFor(edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>());
@@ -57,9 +66,9 @@ TEST_CASE("ProductTransitionRecordIndexHelpersBuilder", "[ProductTransitionRecor
       MockProductsProvider provider;  // Assume this is properly implemented
       auto prodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess");
       provider.addProductKey(prodKey);
-      edm::ProductTransitionRecordIndexHelpersBuilder builder;
+      edm::TransitionRecordIndexHelpersBuilder builder;
 
-      builder.determineProductsFrom(provider);
+      builder.determineProductsFrom(edm::ProvidersKey("dummyModule"), provider);
       builder.finalize({"current","dummyProcess"});
 
       auto helper = builder.helperFor(edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>());

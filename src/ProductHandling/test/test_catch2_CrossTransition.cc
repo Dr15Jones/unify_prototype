@@ -81,17 +81,18 @@ TEST_CASE("CrossTransitionProductProvider", "[CrossTransition]") {
                                      0);
     context.insert(record);
 
-    std::vector<MockProductProvider> providers;
+    //make all our providers for the different transition instances
+    std::vector<MockProductProvider> providers(nTransitionInstances);
     std::vector<edm::TransitionProductProviders> providersRecords;
     auto const& recordKey = record.key();
-    providers.reserve(nTransitionInstances);
     providersRecords.reserve(nTransitionInstances);
+    const edm::TransitionProductProviderIndex providerIndex{0};
     for (unsigned int i = 0; i < nTransitionInstances; ++i) {
-      providers.emplace_back();
-      providersRecords.emplace_back(recordKey, std::vector<edm::ProductProviderBase*>{&providers.back()});
+      //associate the appropriate provider instance with its transition instance
+      providersRecords.emplace_back(recordKey, std::vector<edm::ProductProviderBase*>{&providers[i]});
     }
-
-    consumer.addProviderForProducts(recordKey, providers.front().productsProvided().front(), providersRecords.front().indexForProvider(&providers.front()));
+    REQUIRE(providersRecords.front().key() == recordKey);
+    consumer.addProviderForProducts(recordKey, providers.front().productsProvided().front(), providerIndex);
     {
       oneapi::tbb::task_group group;
       edm::FinalWaitingTask waitTask{group};

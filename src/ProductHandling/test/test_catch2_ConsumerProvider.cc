@@ -69,9 +69,10 @@ TEST_CASE("ProductConsumerBase and ProductProviderBase Interaction", "[ProductCo
     MockProductConsumer consumer;
     edm::TransitionProviderContext providerContext;
     edm::TransitionProductProviders providers{provider.recordForProductsProvided(), {&provider}};
+    const edm::TransitionProductProviderIndex providerIndex{0};
     providerContext.insert(providers);
     edm::TransitionProcessingContext processingContext{context, providerContext};
-    consumer.addProviderForProducts(provider.recordForProductsProvided(), provider.productsProvided().front(), providers.indexForProvider(&provider));
+    consumer.addProviderForProducts(provider.recordForProductsProvided(), provider.productsProvided().front(), providerIndex);
 
     oneapi::tbb::task_group group;
     edm::FinalWaitingTask waitTask{group};
@@ -88,12 +89,14 @@ TEST_CASE("ProductConsumerBase and ProductProviderBase Interaction", "[ProductCo
     MockProductConsumer consumer;
     edm::TransitionProviderContext providerContext;
     edm::TransitionProductProviders providers{provider1.recordForProductsProvided(), {&provider1, &provider2}};
+    const edm::TransitionProductProviderIndex provider1Index{0};
+    const edm::TransitionProductProviderIndex provider2Index{1};
     REQUIRE(provider1.recordForProductsProvided() == provider2.recordForProductsProvided());
     providerContext.insert(providers);
     edm::TransitionProcessingContext processingContext{context, providerContext};
 
-    consumer.addProviderForProducts(provider1.recordForProductsProvided(), provider1.productsProvided().front(), providers.indexForProvider(&provider1));
-    consumer.addProviderForProducts(provider2.recordForProductsProvided(), provider2.productsProvided().front(), providers.indexForProvider(&provider2));
+    consumer.addProviderForProducts(provider1.recordForProductsProvided(), provider1.productsProvided().front(), provider1Index);
+    consumer.addProviderForProducts(provider2.recordForProductsProvided(), provider2.productsProvided().front(), provider2Index);
 
     oneapi::tbb::task_group group;
     edm::FinalWaitingTask waitTask{group};
@@ -111,11 +114,12 @@ TEST_CASE("ProductConsumerBase and ProductProviderBase Interaction", "[ProductCo
     MockProductConsumer consumer2;
     edm::TransitionProviderContext providerContext;
     edm::TransitionProductProviders providers{provider.recordForProductsProvided(), {&provider}};
+    const edm::TransitionProductProviderIndex providerIndex{0};
     providerContext.insert(providers);
     edm::TransitionProcessingContext processingContext{context, providerContext};
 
-    consumer1.addProviderForProducts(provider.recordForProductsProvided(), provider.productsProvided().front(), providers.indexForProvider(&provider));
-    consumer2.addProviderForProducts(provider.recordForProductsProvided(), provider.productsProvided().front(), providers.indexForProvider(&provider));
+    consumer1.addProviderForProducts(provider.recordForProductsProvided(), provider.productsProvided().front(), providerIndex);
+    consumer2.addProviderForProducts(provider.recordForProductsProvided(), provider.productsProvided().front(), providerIndex);
 
     oneapi::tbb::task_group group;
     {

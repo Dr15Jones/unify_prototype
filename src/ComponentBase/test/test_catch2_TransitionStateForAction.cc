@@ -12,7 +12,7 @@
 #include "ProductHandling/TransitionProviderContext.h"
 #include "ProductHandling/ProductTransitionRecordIndexHelper.h"
 #include "ProductHandling/ProductsProvider.h"
-#include "ProductHandling/ProductTransitionRecordIndexHelpersBuilder.h"
+#include "ProductHandling/TransitionRecordIndexHelpersBuilder.h"
 #include "ControlFlow/DecisionRequestorBase.h"
 #include "ControlFlow/StartDecisionGraph.h"
 #include "DataProductBase/Wrapper.h"
@@ -198,7 +198,18 @@ namespace {
     SimpleProductProviders(edm::TransitionRecordKey key, std::vector<edm::ProductKey> products)
         : key_(key), products_(products) {}
     std::vector<edm::TransitionRecordKey> resolverRecords() const final { return {key_}; }
-    std::vector<edm::ProductKey> productKeysForRecord(edm::TransitionRecordKey const&) const final { return products_; }
+    unsigned int numberOfProvidersForRecord(edm::TransitionRecordKey const& record) const final {
+      return (record == key_) ? 1 : 0;
+    }
+    std::vector<edm::ProductKey> productsFromProvider(edm::TransitionRecordKey const& record, unsigned int providerIndex) const final {
+      if (record != key_) {
+        return {};
+      }
+      if (providerIndex != 0) {
+        return {};
+      }
+      return products_;
+    }
     edm::TransitionRecordKey key_;
     std::vector<edm::ProductKey> products_;
   };
@@ -214,6 +225,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       edm::TransitionStateForReentrantAction<SimpleAction> actionState{SimpleAction()};
 
       edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});
+      const edm::TransitionProductProviderIndex actionStateIndex{0};
       edm::TransitionProviderContext providerContext;
       providerContext.insert(providers);
 
@@ -225,7 +237,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       TrivialConsumer consumer;
       consumer.addProviderForProducts(actionState.recordForProductsProvided(),
                                       actionState.productsProvided().front(),
-                                      providers.indexForProvider(&actionState));
+                                      actionStateIndex);
       consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());
@@ -265,6 +277,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
           SimpleExternalWorkAction(&acquireCalled, &workCalled)};
 
       edm::TransitionProductProviders providers(actionState.recordForProductsProvided(), {&actionState});
+      const edm::TransitionProductProviderIndex actionStateIndex{0};
       edm::TransitionProviderContext providerContext;
       providerContext.insert(providers);
 
@@ -276,7 +289,7 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
       TrivialConsumer consumer;
       consumer.addProviderForProducts(actionState.recordForProductsProvided(),
                                       actionState.productsProvided().front(),
-                                      providers.indexForProvider(&actionState));
+                                      actionStateIndex);
       consumer.requestActionAsync(edm::WaitingTaskHolder(group, &waitTask), processingContext);
       waitTask.waitNoThrow();
       REQUIRE(waitTask.done());
@@ -327,9 +340,9 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
     SimpleProductProviders triggerProviders(triggerAction.recordForProductsProvided(),
                                             triggerAction.productsProvided());
     SimpleProductProviders dummyProviders(dummyAction.recordForProductsProvided(), dummyAction.productsProvided());
-    edm::ProductTransitionRecordIndexHelpersBuilder builder;
-    builder.determineProductsFrom(triggerProviders);
-    builder.determineProductsFrom(dummyProviders);
+    edm::TransitionRecordIndexHelpersBuilder builder;
+    builder.determineProductsFrom(edm::ProvidersKey("Trigger"), triggerProviders);
+    builder.determineProductsFrom(edm::ProvidersKey("Dummy"), dummyProviders);
     builder.finalize({"process"});
 
     auto helper = builder.helperFor(triggerAction.recordForProductsProvided());
@@ -340,20 +353,22 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
 
     edm::TransitionProductProviders providers(triggerAction.recordForProductsProvided(),
                                               {&triggerAction, &dummyAction});
+    const edm::TransitionProductProviderIndex triggerProvIndex{0};
+    const edm::TransitionProductProviderIndex dummyProvIndex{1};
+
     edm::TransitionProviderContext providerContext;
     providerContext.insert(providers);
 
     edm::TransitionProcessingContext processingContext(context, providerContext);
 
     auto filter = std::make_unique<edm::TransitionStateForReentrantAction<TriggerResultsFilterAction>>(triggerIndex);
-    auto triggerProvIndex = providerContext.get(triggerAction.reactsToRecord())->indexForProvider(&triggerAction);
     filter->addProviderForProducts(
         triggerAction.recordForProductsProvided(), triggerAction.productsProvided().front(), triggerProvIndex);
     bool writeWasCalled = false;
     auto write = std::make_unique<edm::TransitionStateForReentrantAction<WriteAction>>(writeWasCalled, dummyIndex);
     write->addProviderForProducts(dummyAction.recordForProductsProvided(),
                                   dummyAction.productsProvided().front(),
-                                  providerContext.get(dummyAction.reactsToRecord())->indexForProvider(&dummyAction));
+                                  dummyProvIndex);
     edm::TransitionStateForConditionalAction conditionState{std::move(filter), std::move(write)};
 
     edm::StartDecisionGraph startGraph;
