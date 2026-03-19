@@ -1,8 +1,8 @@
 #ifndef ProductHandling_TransitionRecordIndexHelpersBuilder_h
 #define ProductHandling_TransitionRecordIndexHelpersBuilder_h
 
-#include "ProductHandling/ProductTransitionRecordIndexHelper.h"
-#include "ProductHandling/ProviderTransitionRecordIndexHelper.h"
+#include "ProductHandling/TransitionRecordProductIndexHelper.h"
+#include "ProductHandling/TransitionRecordProductProviderIndexHelper.h"
 #include "ProductHandling/ProvidersKey.h"
 #include "DataModel/TransitionRecordKey.h"
 #include <map>
@@ -21,11 +21,11 @@ namespace edm {
     void finalize(std::vector<std::string_view> const& processNameOrdering);
     std::vector<TransitionRecordKey> usedRecords() const;
 
-    std::shared_ptr<ProductTransitionRecordIndexHelper> helperFor(TransitionRecordKey const& key) const;
-    std::shared_ptr<ProviderTransitionRecordIndexHelper> providerHelperFor(TransitionRecordKey const& key) const;
+    std::shared_ptr<TransitionRecordProductIndexHelper> helperFor(TransitionRecordKey const& key) const;
+    std::shared_ptr<TransitionRecordProductProviderIndexHelper> providerHelperFor(TransitionRecordKey const& key) const;
   private:
-    std::map<TransitionRecordKey, std::shared_ptr<ProductTransitionRecordIndexHelper>> helpers_;
-    std::map<TransitionRecordKey, std::shared_ptr<ProviderTransitionRecordIndexHelper>> providerHelpers_;
+    std::map<TransitionRecordKey, std::shared_ptr<TransitionRecordProductIndexHelper>> helpers_;
+    std::map<TransitionRecordKey, std::shared_ptr<TransitionRecordProductProviderIndexHelper>> providerHelpers_;
   };
 }  // namespace edm
 

@@ -1,5 +1,5 @@
-#ifndef ProductHandling_ProviderTransitionRecordIndexHelper_h
-#define ProductHandling_ProviderTransitionRecordIndexHelper_h
+#ifndef ProductHandling_TransitionRecordProductProviderIndexHelper_h
+#define ProductHandling_TransitionRecordProductProviderIndexHelper_h
 
 #include "DataModel/ProductKey.h"
 #include "ProductHandling/TransitionProductProviderIndex.h"
@@ -9,9 +9,9 @@
 #include <map>
 
 namespace edm {
-  class ProviderTransitionRecordIndexHelper {
+  class TransitionRecordProductProviderIndexHelper {
   public:
-    ~ProviderTransitionRecordIndexHelper() = default;
+    ~TransitionRecordProductProviderIndexHelper() = default;
     void insert(ProvidersKey const& iProvidersKey, std::vector<ProductKey> const& productKeys);
 
     TransitionProductProviderIndex indexForProduct(ProductKey const& productKey) const;

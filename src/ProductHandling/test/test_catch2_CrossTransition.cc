@@ -9,7 +9,7 @@
 #include "ProductHandling/ProductConsumerSingleBase.h"
 #include "ProductHandling/TransitionContext.h"
 #include "ProductHandling/TransitionRecordImpl.h"
-#include "ProductHandling/ProductTransitionRecordIndexHelper.h"
+#include "ProductHandling/TransitionRecordProductIndexHelper.h"
 #include "ProductHandling/TransitionProcessingContext.h"
 #include "ProductHandling/TransitionProviderContext.h"
 namespace ctptest {
@@ -77,7 +77,7 @@ TEST_CASE("CrossTransitionProductProvider", "[CrossTransition]") {
 
     edm::TransitionContext context;
     edm::TransitionRecordImpl record(edm::TransitionRecordKey::makeKey<ctptest::ParentRecord>(),
-                                     std::make_shared<edm::ProductTransitionRecordIndexHelper>(),
+                                     std::make_shared<edm::TransitionRecordProductIndexHelper>(),
                                      0);
     context.insert(record);
 

@@ -27,7 +27,7 @@ namespace trptest {
 TEST_CASE("TransitionRecordProvider", "[TransitionRecordProvider]") {
   SECTION("Constructor and Key Access") {
     edm::TransitionRecordKey key = edm::TransitionRecordKey::makeKey<trptest::DummyRecord>();
-    edm::TransitionRecordProvider provider(key,std::make_shared<edm::ProductTransitionRecordIndexHelper>(), 1);
+    edm::TransitionRecordProvider provider(key,std::make_shared<edm::TransitionRecordProductIndexHelper>(), 1);
 
     REQUIRE(provider.key() == key);
   }

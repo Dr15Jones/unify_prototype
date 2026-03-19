@@ -1,9 +1,9 @@
 #include "ProductHandling/TransitionRecordImpl.h"
-#include "ProductHandling/ProductTransitionRecordIndexHelper.h"
+#include "ProductHandling/TransitionRecordProductIndexHelper.h"
 
 namespace edm {
   TransitionRecordImpl::TransitionRecordImpl(TransitionRecordKey key,
-                                             std::shared_ptr<ProductTransitionRecordIndexHelper> iHelper,
+                                             std::shared_ptr<TransitionRecordProductIndexHelper> iHelper,
                                              unsigned int replicationIndex)
       : key_(key), wrappers_(iHelper->numberOfProducts()), helper_(iHelper), replicationIndex_(replicationIndex) {
     assert(helper_);

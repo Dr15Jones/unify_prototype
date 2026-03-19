@@ -8,11 +8,11 @@ void edm::TransitionRecordIndexHelpersBuilder::determineProductsFrom(ProvidersKe
   for (const auto& recordKey : resolverRecords) {
     auto& providerHelper = providerHelpers_[recordKey];
     if (!providerHelper) {
-      providerHelper = std::make_shared<ProviderTransitionRecordIndexHelper>();
+      providerHelper = std::make_shared<TransitionRecordProductProviderIndexHelper>();
     }
     auto& helper = helpers_[recordKey];
     if (!helper) {
-      helper = std::make_shared<ProductTransitionRecordIndexHelper>();
+      helper = std::make_shared<TransitionRecordProductIndexHelper>();
     }
 
     auto numberOfProviders = provider.numberOfProvidersForRecord(recordKey);
@@ -41,7 +41,7 @@ std::vector<edm::TransitionRecordKey> edm::TransitionRecordIndexHelpersBuilder::
   return keys;
 }
 
-std::shared_ptr<edm::ProductTransitionRecordIndexHelper> edm::TransitionRecordIndexHelpersBuilder::helperFor(
+std::shared_ptr<edm::TransitionRecordProductIndexHelper> edm::TransitionRecordIndexHelpersBuilder::helperFor(
     TransitionRecordKey const& key) const {
   auto it = helpers_.find(key);
   if (it != helpers_.end()) {
@@ -50,7 +50,7 @@ std::shared_ptr<edm::ProductTransitionRecordIndexHelper> edm::TransitionRecordIn
   return nullptr;  // Return nullptr if the helper is not found
 }
 
-std::shared_ptr<edm::ProviderTransitionRecordIndexHelper> edm::TransitionRecordIndexHelpersBuilder::providerHelperFor(
+std::shared_ptr<edm::TransitionRecordProductProviderIndexHelper> edm::TransitionRecordIndexHelpersBuilder::providerHelperFor(
     TransitionRecordKey const& key) const {
   auto it = providerHelpers_.find(key);
   if (it != providerHelpers_.end()) {

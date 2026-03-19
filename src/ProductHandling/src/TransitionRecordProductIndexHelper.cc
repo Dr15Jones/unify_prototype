@@ -1,21 +1,21 @@
-#include "ProductHandling/ProductTransitionRecordIndexHelper.h"
+#include "ProductHandling/TransitionRecordProductIndexHelper.h"
 #include "Base/Exception.h"
 
-void edm::ProductTransitionRecordIndexHelper::insert(ProductKey const& productKey) {
+void edm::TransitionRecordProductIndexHelper::insert(ProductKey const& productKey) {
   auto index = keyToIndex_.find(productKey);
   if (index != keyToIndex_.end()) {
-    throw cms::Exception("ProductTransitionRecordIndexHelper")
+    throw cms::Exception("TransitionRecordProductIndexHelper")
         << "ProductKey already exists: " << productKey.typeID().name() << " " << productKey.moduleLabel() << " "
         << productKey.productInstanceName() << " " << productKey.processName();
   }
-  ProductTransitionRecordIndex newIndex(keyToIndex_.size());
+  TransitionRecordProductIndex newIndex(keyToIndex_.size());
   keyToIndex_[productKey] = newIndex;
 }
 
-void edm::ProductTransitionRecordIndexHelper::finalize(std::vector<std::string_view> const& processNameOrder) {
+void edm::TransitionRecordProductIndexHelper::finalize(std::vector<std::string_view> const& processNameOrder) {
   //For each element, check to see if this should be the entry for the empty process name, and if so add
   // the entry
-  std::map<ProductKey, std::pair<std::string,ProductTransitionRecordIndex>> defaultLookup;
+  std::map<ProductKey, std::pair<std::string,TransitionRecordProductIndex>> defaultLookup;
   for (auto const& keyAndIndex : keyToIndex_) {
     auto const& testKey = keyAndIndex.first;
     ProductKey newKey{testKey.typeID(), testKey.moduleLabel(), testKey.productInstanceName(), ""};
@@ -36,10 +36,10 @@ void edm::ProductTransitionRecordIndexHelper::finalize(std::vector<std::string_v
   }
 }
 
-edm::ProductTransitionRecordIndex edm::ProductTransitionRecordIndexHelper::getIndex(ProductKey const& productKey) const {
+edm::TransitionRecordProductIndex edm::TransitionRecordProductIndexHelper::getIndex(ProductKey const& productKey) const {
   auto index = keyToIndex_.find(productKey);
   if (index == keyToIndex_.end()) {
-    return edm::ProductTransitionRecordIndex();  // Return an uninitialized index if not found
+    return edm::TransitionRecordProductIndex();  // Return an uninitialized index if not found
   }
   return index->second;
 }

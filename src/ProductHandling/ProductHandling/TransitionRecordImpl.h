@@ -3,7 +3,7 @@
 
 #include "DataModel/ProductKey.h"
 #include "DataModel/TransitionRecordKey.h"
-#include "DataModel/ProductTransitionRecordIndex.h"
+#include "DataModel/TransitionRecordProductIndex.h"
 #include "DataProductBase/WrapperBase.h"
 
 #include <memory>
@@ -16,14 +16,14 @@ IFF the TransitionRecords do not strictly form a hierarchy.
 Q: Should the transition record hold connections to the TransitionRecordImpl for which it is a dependency?
 */
 namespace edm {
-  class ProductTransitionRecordIndexHelper;
+  class TransitionRecordProductIndexHelper;
   class TransitionRecordImpl {
   public:
     TransitionRecordImpl(TransitionRecordKey key,
-                         std::shared_ptr<ProductTransitionRecordIndexHelper> iHelper,
+                         std::shared_ptr<TransitionRecordProductIndexHelper> iHelper,
                          unsigned int replicationIndex);
 
-    WrapperBase const* get(ProductTransitionRecordIndex index) const {
+    WrapperBase const* get(TransitionRecordProductIndex index) const {
       if (index.isUninitialized()) {
         return nullptr;
       }
@@ -31,11 +31,11 @@ namespace edm {
       return wrappers_[index.value()].get();
     }
 
-    void put(ProductTransitionRecordIndex index, std::unique_ptr<WrapperBase> wrapper) {
+    void put(TransitionRecordProductIndex index, std::unique_ptr<WrapperBase> wrapper) {
       assert(index.value() < wrappers_.size());
       wrappers_[index.value()] = std::move(wrapper);
     }
-    ProductTransitionRecordIndexHelper const& helper() const { return *helper_; }
+    TransitionRecordProductIndexHelper const& helper() const { return *helper_; }
 
     TransitionRecordKey const& key() const { return key_; }
 
@@ -59,7 +59,7 @@ namespace edm {
   private:
     TransitionRecordKey key_;
     std::vector<std::unique_ptr<WrapperBase>> wrappers_;
-    std::shared_ptr<ProductTransitionRecordIndexHelper> helper_;
+    std::shared_ptr<TransitionRecordProductIndexHelper> helper_;
     unsigned long long cacheIdentifier_ = 0;  // Initialized to 0 to indicate uninitialized state
     unsigned int replicationIndex_ = 0;       // Initialized to 0, can be set later if needed
   };

@@ -16,12 +16,12 @@ namespace edm {
   public:
     TransitionRecordProvider() = delete;
     explicit TransitionRecordProvider(TransitionRecordKey key,
-                                      std::shared_ptr<ProductTransitionRecordIndexHelper>,
+                                      std::shared_ptr<TransitionRecordProductIndexHelper>,
                                       unsigned int allowedConcurrency);
 
     TransitionRecordKey const& key() const { return key_; }
   private:
-    std::shared_ptr<ProductTransitionRecordIndexHelper> helper_;
+    std::shared_ptr<TransitionRecordProductIndexHelper> helper_;
     std::vector<std::unique_ptr<TransitionRecordImpl>> records_;
     TransitionRecordKey key_;
     unsigned int allowedConcurrency_;

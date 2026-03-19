@@ -1,8 +1,8 @@
 #include "ProductHandling/TransitionRecordProvider.h"
 #include "ProductHandling/ProductsProvider.h"
 #include "ProductHandling/TransitionRecordImpl.h"
-#include "ProductHandling/ProductTransitionRecordIndexHelper.h"
+#include "ProductHandling/TransitionRecordProductIndexHelper.h"
 
-edm::TransitionRecordProvider::TransitionRecordProvider(TransitionRecordKey key, std::shared_ptr<ProductTransitionRecordIndexHelper> iHelper, unsigned int allowedConcurrency):
+edm::TransitionRecordProvider::TransitionRecordProvider(TransitionRecordKey key, std::shared_ptr<TransitionRecordProductIndexHelper> iHelper, unsigned int allowedConcurrency):
     key_(std::move(key)), helper_(iHelper), allowedConcurrency_(allowedConcurrency) {
 }

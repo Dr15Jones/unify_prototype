@@ -1,5 +1,5 @@
 #include <catch2/catch.hpp>
-#include "ProductHandling/ProductTransitionRecordIndexHelper.h"
+#include "ProductHandling/TransitionRecordProductIndexHelper.h"
 #include "ProductHandling/TransitionRecordIndexHelpersBuilder.h"
 #include "ProductHandling/ProductsProvider.h"
 
@@ -58,9 +58,9 @@ TEST_CASE("TransitionRecordIndexHelpersBuilder", "[TransitionRecordIndexHelpersB
       builder.finalize({"dummyProcess"});
 
       auto helper = builder.helperFor(edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>());
-      CHECK(helper->getIndex(prodKey) == edm::ProductTransitionRecordIndex{0});
+      CHECK(helper->getIndex(prodKey) == edm::TransitionRecordProductIndex{0});
       auto noprodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "");
-      CHECK(helper->getIndex(noprodKey) == edm::ProductTransitionRecordIndex{0});
+      CHECK(helper->getIndex(noprodKey) == edm::TransitionRecordProductIndex{0});
     }
     SECTION("one from earlier") {
       MockProductsProvider provider;  // Assume this is properly implemented
@@ -72,9 +72,9 @@ TEST_CASE("TransitionRecordIndexHelpersBuilder", "[TransitionRecordIndexHelpersB
       builder.finalize({"current","dummyProcess"});
 
       auto helper = builder.helperFor(edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>());
-      CHECK(helper->getIndex(prodKey) == edm::ProductTransitionRecordIndex{0});
+      CHECK(helper->getIndex(prodKey) == edm::TransitionRecordProductIndex{0});
       auto noprodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "");
-      CHECK(helper->getIndex(noprodKey) == edm::ProductTransitionRecordIndex{0});
+      CHECK(helper->getIndex(noprodKey) == edm::TransitionRecordProductIndex{0});
     }
   }
 }

@@ -10,7 +10,7 @@
 #include "ProductHandling/TransitionContext.h"
 #include "ProductHandling/TransitionProcessingContext.h"
 #include "ProductHandling/TransitionProviderContext.h"
-#include "ProductHandling/ProductTransitionRecordIndexHelper.h"
+#include "ProductHandling/TransitionRecordProductIndexHelper.h"
 #include "ProductHandling/ProductsProvider.h"
 #include "ProductHandling/TransitionRecordIndexHelpersBuilder.h"
 #include "ControlFlow/DecisionRequestorBase.h"
@@ -99,9 +99,9 @@ namespace {
   struct DummyProduct {};
   struct TriggerResultsAction {
     TriggerResults& results_;
-    edm::ProductTransitionRecordIndex& putIndex_;
+    edm::TransitionRecordProductIndex& putIndex_;
 
-    TriggerResultsAction(TriggerResults& results, edm::ProductTransitionRecordIndex& putIndex)
+    TriggerResultsAction(TriggerResults& results, edm::TransitionRecordProductIndex& putIndex)
         : results_(results), putIndex_(putIndex) {}
     edm::TransitionRecordKey reactsToRecord() const { return edm::TransitionRecordKey::makeKey<int>(); }
     std::vector<edm::TransitionRecordKey> recordForProductsConsumed() const { return {}; }
@@ -122,9 +122,9 @@ namespace {
   };
 
   struct DummyProductAction {
-    edm::ProductTransitionRecordIndex& putIndex_;
+    edm::TransitionRecordProductIndex& putIndex_;
 
-    DummyProductAction(edm::ProductTransitionRecordIndex& putIndex) : putIndex_(putIndex) {}
+    DummyProductAction(edm::TransitionRecordProductIndex& putIndex) : putIndex_(putIndex) {}
     edm::TransitionRecordKey reactsToRecord() const { return edm::TransitionRecordKey::makeKey<int>(); }
     std::vector<edm::TransitionRecordKey> recordForProductsConsumed() const { return {}; }
 
@@ -144,9 +144,9 @@ namespace {
   };
 
   struct TriggerResultsFilterAction {
-    edm::ProductTransitionRecordIndex& getIndex_;
+    edm::TransitionRecordProductIndex& getIndex_;
 
-    TriggerResultsFilterAction(edm::ProductTransitionRecordIndex& getIndex) : getIndex_(getIndex) {}
+    TriggerResultsFilterAction(edm::TransitionRecordProductIndex& getIndex) : getIndex_(getIndex) {}
     edm::TransitionRecordKey reactsToRecord() const { return edm::TransitionRecordKey::makeKey<int>(); }
     std::vector<edm::TransitionRecordKey> recordForProductsConsumed() const {
       return {edm::TransitionRecordKey::makeKey<int>()};
@@ -171,9 +171,9 @@ namespace {
 
   struct WriteAction {
     bool& wasCalled_;
-    edm::ProductTransitionRecordIndex& getIndex_;
+    edm::TransitionRecordProductIndex& getIndex_;
 
-    WriteAction(bool& wasCalled, edm::ProductTransitionRecordIndex& getIndex)
+    WriteAction(bool& wasCalled, edm::TransitionRecordProductIndex& getIndex)
         : wasCalled_(wasCalled), getIndex_(getIndex) {}
     edm::TransitionRecordKey reactsToRecord() const { return edm::TransitionRecordKey::makeKey<int>(); }
     std::vector<edm::TransitionRecordKey> recordForProductsConsumed() const {
@@ -331,10 +331,10 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
   SECTION("Conditional") {
     edm::TransitionContext context;
     TriggerResults results;
-    edm::ProductTransitionRecordIndex triggerIndex;
+    edm::TransitionRecordProductIndex triggerIndex;
     edm::TransitionStateForReentrantAction<TriggerResultsAction> triggerAction{results, triggerIndex};
 
-    edm::ProductTransitionRecordIndex dummyIndex;
+    edm::TransitionRecordProductIndex dummyIndex;
     edm::TransitionStateForReentrantAction<DummyProductAction> dummyAction{dummyIndex};
 
     SimpleProductProviders triggerProviders(triggerAction.recordForProductsProvided(),

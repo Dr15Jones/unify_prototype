@@ -1,15 +1,15 @@
-#include "ProductHandling/ProviderTransitionRecordIndexHelper.h"
+#include "ProductHandling/TransitionRecordProductProviderIndexHelper.h"
 #include "Base/Exception.h"
 #include <cassert>
 
 namespace edm {
-  void ProviderTransitionRecordIndexHelper::insert(ProvidersKey const& iProvidersKey, std::vector<ProductKey> const& productKeys) {
+  void TransitionRecordProductProviderIndexHelper::insert(ProvidersKey const& iProvidersKey, std::vector<ProductKey> const& productKeys) {
     const unsigned int indexToUse = nextIndex_++;
     providersIndices_[iProvidersKey].emplace_back(indexToUse);
     for (auto const& key : productKeys) {
       auto index = keyToIndex_.find(key);
       if (index != keyToIndex_.end()) {
-        throw cms::Exception("ProviderTransitionRecordIndexHelper")
+        throw cms::Exception("TransitionRecordProductProviderIndexHelper")
             << "ProductKey already exists: " << key.typeID().name() << " " << key.moduleLabel() << " "
             << key.productInstanceName() << " " << key.processName();
       }
@@ -18,7 +18,7 @@ namespace edm {
     }
   }
 
-  TransitionProductProviderIndex ProviderTransitionRecordIndexHelper::indexForProduct(
+  TransitionProductProviderIndex TransitionRecordProductProviderIndexHelper::indexForProduct(
       ProductKey const& productKey) const {
     auto index = keyToIndex_.find(productKey);
     if (index == keyToIndex_.end()) {
@@ -27,7 +27,7 @@ namespace edm {
     return index->second;
   }
 
-  TransitionProductProviderIndex ProviderTransitionRecordIndexHelper::indexForProvider(ProvidersKey const& iProvidersKey, unsigned int providerIndex) const {
+  TransitionProductProviderIndex TransitionRecordProductProviderIndexHelper::indexForProvider(ProvidersKey const& iProvidersKey, unsigned int providerIndex) const {
     auto it = providersIndices_.find(iProvidersKey);
     if (it == providersIndices_.end() || providerIndex >= it->second.size()) {
       return TransitionProductProviderIndex();  // Return an uninitialized index if not found
