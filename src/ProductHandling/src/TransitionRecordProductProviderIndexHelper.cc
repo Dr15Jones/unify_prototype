@@ -3,9 +3,9 @@
 #include <cassert>
 
 namespace edm {
-  void TransitionRecordProductProviderIndexHelper::insert(ProvidersKey const& iProvidersKey, std::vector<ProductKey> const& productKeys) {
+  void TransitionRecordProductProviderIndexHelper::insert(ProductProviderBundleKey const& iProductProviderBundleKey, std::vector<ProductKey> const& productKeys) {
     const unsigned int indexToUse = nextIndex_++;
-    providersIndices_[iProvidersKey].emplace_back(indexToUse);
+    providersIndices_[iProductProviderBundleKey].emplace_back(indexToUse);
     for (auto const& key : productKeys) {
       auto index = keyToIndex_.find(key);
       if (index != keyToIndex_.end()) {
@@ -27,8 +27,8 @@ namespace edm {
     return index->second;
   }
 
-  TransitionProductProviderIndex TransitionRecordProductProviderIndexHelper::indexForProvider(ProvidersKey const& iProvidersKey, unsigned int providerIndex) const {
-    auto it = providersIndices_.find(iProvidersKey);
+  TransitionProductProviderIndex TransitionRecordProductProviderIndexHelper::indexForProvider(ProductProviderBundleKey const& iProductProviderBundleKey, unsigned int providerIndex) const {
+    auto it = providersIndices_.find(iProductProviderBundleKey);
     if (it == providersIndices_.end() || providerIndex >= it->second.size()) {
       return TransitionProductProviderIndex();  // Return an uninitialized index if not found
     }

@@ -1,15 +1,15 @@
 #include <catch2/catch.hpp>
 
 #include "ProductHandling/TransitionRecordProvider.h"
-#include "ProductHandling/ProductsProvider.h"
+#include "ProductHandling/ProductProviderBundle.h"
 #include "ProductHandling/TransitionRecordIndexHelpersBuilder.h"
 #include "DataModel/TransitionRecordKey.h"
 
 namespace trptest {
   struct DummyRecord {};
 
-  // Mock ProductsProvider
-  class MockProductsProvider : public edm::ProductsProvider {
+  // Mock ProductProviderBundle
+  class MockProductProviderBundle : public edm::ProductProviderBundle {
   public:
     std::vector<edm::TransitionRecordKey> resolverRecords() const override {
       return {edm::TransitionRecordKey::makeKey<trptest::DummyRecord>()};
@@ -33,8 +33,8 @@ TEST_CASE("TransitionRecordProvider", "[TransitionRecordProvider]") {
   }
   SECTION("Add Resolvers from Provider") {
     edm::TransitionRecordIndexHelpersBuilder builder;
-    trptest::MockProductsProvider mockProvider;
-    builder.determineProductsFrom(edm::ProvidersKey("mock"), mockProvider);
+    trptest::MockProductProviderBundle mockProvider;
+    builder.determineProductsFrom(edm::ProductProviderBundleKey("mock"), mockProvider);
     edm::TransitionRecordKey key = edm::TransitionRecordKey::makeKey<trptest::DummyRecord>();
     edm::TransitionRecordProvider provider(key, builder.helperFor(key), 1);
 

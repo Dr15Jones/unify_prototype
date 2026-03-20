@@ -1,14 +1,14 @@
 #include <catch2/catch.hpp>
 #include "ProductHandling/TransitionRecordProductIndexHelper.h"
 #include "ProductHandling/TransitionRecordIndexHelpersBuilder.h"
-#include "ProductHandling/ProductsProvider.h"
+#include "ProductHandling/ProductProviderBundle.h"
 
 namespace prihtest {
   struct DummyRecord {};
   struct DummyProduct {};
 
-  // Mock ProductsProvider
-  class MockProductsProvider : public edm::ProductsProvider {
+  // Mock ProductProviderBundle
+  class MockProductProviderBundle : public edm::ProductProviderBundle {
   public:
     void addProductKey(edm::ProductKey key) { keys_.emplace_back(std::move(key)); }
 
@@ -37,24 +37,24 @@ namespace prihtest {
 using namespace prihtest;
 TEST_CASE("TransitionRecordIndexHelpersBuilder", "[TransitionRecordIndexHelpersBuilder]") {
   SECTION("Determine Products from Provider") {
-    MockProductsProvider provider;  // Assume this is properly implemented
-    provider.addProductKey(
+    MockProductProviderBundle bundle;  // Assume this is properly implemented
+    bundle.addProductKey(
         edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess"));
     edm::TransitionRecordIndexHelpersBuilder builder;
 
-    builder.determineProductsFrom(edm::ProvidersKey("dummyModule"), provider);
+    builder.determineProductsFrom(edm::ProductProviderBundleKey("dummyModule"), bundle);
 
     auto usedRecords = builder.usedRecords();
     REQUIRE(!usedRecords.empty());
   }
   SECTION("Test no process filling") {
     SECTION("one from current") {
-      MockProductsProvider provider;  // Assume this is properly implemented
+      MockProductProviderBundle bundle;  // Assume this is properly implemented
       auto prodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess");
-      provider.addProductKey(prodKey);
+      bundle.addProductKey(prodKey);
       edm::TransitionRecordIndexHelpersBuilder builder;
 
-      builder.determineProductsFrom(edm::ProvidersKey("dummyModule"), provider);
+      builder.determineProductsFrom(edm::ProductProviderBundleKey("dummyModule"), bundle);
       builder.finalize({"dummyProcess"});
 
       auto helper = builder.helperFor(edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>());
@@ -63,12 +63,12 @@ TEST_CASE("TransitionRecordIndexHelpersBuilder", "[TransitionRecordIndexHelpersB
       CHECK(helper->getIndex(noprodKey) == edm::TransitionRecordProductIndex{0});
     }
     SECTION("one from earlier") {
-      MockProductsProvider provider;  // Assume this is properly implemented
+      MockProductProviderBundle bundle;  // Assume this is properly implemented
       auto prodKey = edm::ProductKey::makeKey<prihtest::DummyProduct>("dummyModule", "dummyInstance", "dummyProcess");
-      provider.addProductKey(prodKey);
+      bundle.addProductKey(prodKey);
       edm::TransitionRecordIndexHelpersBuilder builder;
 
-      builder.determineProductsFrom(edm::ProvidersKey("dummyModule"), provider);
+      builder.determineProductsFrom(edm::ProductProviderBundleKey("dummyModule"), bundle);
       builder.finalize({"current","dummyProcess"});
 
       auto helper = builder.helperFor(edm::TransitionRecordKey::makeKey<prihtest::DummyRecord>());

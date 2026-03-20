@@ -1,9 +1,9 @@
 #include "ProductHandling/TransitionRecordIndexHelpersBuilder.h"
-#include "ProductHandling/ProductsProvider.h"
+#include "ProductHandling/ProductProviderBundle.h"
 #include "DataModel/ProductKey.h"
 #include "Base/Exception.h"
 
-void edm::TransitionRecordIndexHelpersBuilder::determineProductsFrom(ProvidersKey const& key, ProductsProvider const& provider) {
+void edm::TransitionRecordIndexHelpersBuilder::determineProductsFrom(ProductProviderBundleKey const& key, ProductProviderBundle const& provider) {
   auto resolverRecords = provider.resolverRecords();
   for (const auto& recordKey : resolverRecords) {
     auto& providerHelper = providerHelpers_[recordKey];

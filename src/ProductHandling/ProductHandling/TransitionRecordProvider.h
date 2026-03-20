@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace edm {
-  class ProductsProvider;
+  class ProductProviderBundle;
   class TransitionRecordProvider {
   public:
     TransitionRecordProvider() = delete;

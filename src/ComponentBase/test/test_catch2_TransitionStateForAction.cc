@@ -11,7 +11,7 @@
 #include "ProductHandling/TransitionProcessingContext.h"
 #include "ProductHandling/TransitionProviderContext.h"
 #include "ProductHandling/TransitionRecordProductIndexHelper.h"
-#include "ProductHandling/ProductsProvider.h"
+#include "ProductHandling/ProductProviderBundle.h"
 #include "ProductHandling/TransitionRecordIndexHelpersBuilder.h"
 #include "ControlFlow/DecisionRequestorBase.h"
 #include "ControlFlow/StartDecisionGraph.h"
@@ -194,7 +194,7 @@ namespace {
     }
   };
 
-  struct SimpleProductProviders : public edm::ProductsProvider {
+  struct SimpleProductProviders : public edm::ProductProviderBundle {
     SimpleProductProviders(edm::TransitionRecordKey key, std::vector<edm::ProductKey> products)
         : key_(key), products_(products) {}
     std::vector<edm::TransitionRecordKey> resolverRecords() const final { return {key_}; }
@@ -341,8 +341,8 @@ TEST_CASE("Test TransitionStateForAction", "[TransitionStateForAction]") {
                                             triggerAction.productsProvided());
     SimpleProductProviders dummyProviders(dummyAction.recordForProductsProvided(), dummyAction.productsProvided());
     edm::TransitionRecordIndexHelpersBuilder builder;
-    builder.determineProductsFrom(edm::ProvidersKey("Trigger"), triggerProviders);
-    builder.determineProductsFrom(edm::ProvidersKey("Dummy"), dummyProviders);
+    builder.determineProductsFrom(edm::ProductProviderBundleKey("Trigger"), triggerProviders);
+    builder.determineProductsFrom(edm::ProductProviderBundleKey("Dummy"), dummyProviders);
     builder.finalize({"process"});
 
     auto helper = builder.helperFor(triggerAction.recordForProductsProvided());

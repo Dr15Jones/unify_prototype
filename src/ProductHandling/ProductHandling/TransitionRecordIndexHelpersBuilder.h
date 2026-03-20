@@ -3,20 +3,20 @@
 
 #include "ProductHandling/TransitionRecordProductIndexHelper.h"
 #include "ProductHandling/TransitionRecordProductProviderIndexHelper.h"
-#include "ProductHandling/ProvidersKey.h"
+#include "ProductHandling/ProductProviderBundleKey.h"
 #include "DataModel/TransitionRecordKey.h"
 #include <map>
 #include <vector>
 #include <memory>
 #include <string_view>
 namespace edm {
-  class ProductsProvider;
+  class ProductProviderBundle;
 
   class TransitionRecordIndexHelpersBuilder {
   public:
     TransitionRecordIndexHelpersBuilder() = default;
 
-    void determineProductsFrom(ProvidersKey const& key, ProductsProvider const& provider);
+    void determineProductsFrom(ProductProviderBundleKey const& key, ProductProviderBundle const& provider);
 
     void finalize(std::vector<std::string_view> const& processNameOrdering);
     std::vector<TransitionRecordKey> usedRecords() const;

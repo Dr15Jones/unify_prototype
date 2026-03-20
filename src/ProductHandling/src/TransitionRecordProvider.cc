@@ -1,5 +1,5 @@
 #include "ProductHandling/TransitionRecordProvider.h"
-#include "ProductHandling/ProductsProvider.h"
+#include "ProductHandling/ProductProviderBundle.h"
 #include "ProductHandling/TransitionRecordImpl.h"
 #include "ProductHandling/TransitionRecordProductIndexHelper.h"
 
