@@ -1,5 +1,5 @@
 #define CATCH_CONFIG_MAIN
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 #include "oneapi/tbb/global_control.h"
 
 #include "ComponentBase/TransitionStateForReentrantAction.h"

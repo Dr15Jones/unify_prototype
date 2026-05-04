@@ -8,7 +8,7 @@ Changed by Viji on 29-06-2005
 #include <cassert>
 #include <iostream>
 #include <string>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include "Base/TypeIDBase.h"
 
 namespace edmtest {

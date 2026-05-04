@@ -1,4 +1,4 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include "oneapi/tbb/global_control.h"
 #include "oneapi/tbb/task_group.h"
 #include <iostream>

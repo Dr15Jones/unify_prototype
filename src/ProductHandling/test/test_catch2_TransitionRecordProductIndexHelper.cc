@@ -1,4 +1,4 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include "ProductHandling/TransitionRecordProductIndexHelper.h"
 #include "ProductHandling/TransitionRecordIndexHelpersBuilder.h"
 #include "ProductHandling/ProductProviderBundle.h"
