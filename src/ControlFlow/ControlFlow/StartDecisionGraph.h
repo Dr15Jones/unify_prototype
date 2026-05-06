@@ -9,10 +9,10 @@ namespace edm {
   class WaitingTaskHolder;
   class TransitionProcessingContext;
 
-  class StartDecisionGraph : public DecisionRequestorBase {
+  class StartDecisionGraph final : public DecisionRequestorBase {
   public:
     StartDecisionGraph() = default;
-    virtual ~StartDecisionGraph() final = default;
+    virtual ~StartDecisionGraph() = default;
 
     void startAsync(WaitingTaskHolder task, TransitionProcessingContext & context);
 

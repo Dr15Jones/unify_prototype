@@ -11,7 +11,7 @@ If any requestor decides EXCEPTION, the decision is EXCEPTION.
 #include "ControlFlow/ControlFlowStatus.h"
 
 namespace edm {
-  class AndDecisionNode : public BinaryDecisionNode {
+  class AndDecisionNode final : public BinaryDecisionNode {
   public:
     AndDecisionNode(std::shared_ptr<DecisionNodeBase> iLeft, std::shared_ptr<DecisionNodeBase> iRight):
       BinaryDecisionNode(iLeft, iRight) {}

@@ -8,12 +8,12 @@
 #include <memory>
 
 namespace edm {
-  class SpyingDecisionNode : public DecisionNodeBase, public DecisionRequestorBase {
+  class SpyingDecisionNode final : public DecisionNodeBase, public DecisionRequestorBase {
   public:
     SpyingDecisionNode(std::shared_ptr<DecisionNodeBase> iNode ) : node_{iNode}, status_(ControlFlowStatus::NOT_STARTED) {
             node_->addRequestorForDecision(this);
     }
-    ~SpyingDecisionNode() final = default;
+    ~SpyingDecisionNode() = default;
 
     void decisionFromNodeAsync(WaitingTaskHolder task,
                                         TransitionProcessingContext & context,

@@ -4,10 +4,10 @@
 #include "ControlFlow/DecisionNodeBase.h"
 
 namespace edm {
-  class DummyDecisionNode : public DecisionNodeBase {
+  class DummyDecisionNode final : public DecisionNodeBase {
   public:
     DummyDecisionNode(ControlFlowStatus status) : status_(status) {}
-    ~DummyDecisionNode() final = default;
+    ~DummyDecisionNode() = default;
 
   private:
     void makeDecisionAsync_(WaitingTaskHolder task, TransitionProcessingContext & context, RequestState state) final {

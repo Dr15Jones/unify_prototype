@@ -9,7 +9,7 @@
 #include <memory>
 #include <cassert>
 namespace edm {
-  class TransitionStateForConditionalAction : public TransitionStateForActionBase {
+  class TransitionStateForConditionalAction final : public TransitionStateForActionBase {
   public:
     explicit TransitionStateForConditionalAction(std::unique_ptr<TransitionStateForActionBase> iDecision,
                                            std::unique_ptr<TransitionStateForActionBase> iAction)
