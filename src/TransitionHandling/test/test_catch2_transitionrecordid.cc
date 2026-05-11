@@ -40,35 +40,35 @@ TEST_CASE("TransitionRecordID can be constructed and compared") {
   }
   SECTION("more than 4 words") {
     edm::TransitionRecordID id1(1U);
-    REQUIRE(id1.wordCount() == 1);
+    REQUIRE(id1.size() == 1);
     edm::TransitionRecordID id2(id1, 2U);
-    REQUIRE(id2.wordCount() == 2);
+    REQUIRE(id2.size() == 2);
     edm::TransitionRecordID id3(id2, 3U);
-    REQUIRE(id3.wordCount() == 3);
+    REQUIRE(id3.size() == 3);
     edm::TransitionRecordID id4(id3, 4U);
-    REQUIRE(id4.wordCount() == 4);
+    REQUIRE(id4.size() == 4);
     edm::TransitionRecordID id5(id4, 5U);
-    REQUIRE(id5.wordCount() == 5);
+    REQUIRE(id5.size() == 5);
     REQUIRE(id1 < id2);
     REQUIRE(id2 < id3);
     REQUIRE(id3 < id4);
     REQUIRE(id4 < id5);
     REQUIRE(id5 > id1);
     edm::TransitionRecordID id5_other(id4, 5U);
-    REQUIRE(id5_other.wordCount() == 5);
+    REQUIRE(id5_other.size() == 5);
     REQUIRE(id5 == id5_other);
     edm::TransitionRecordID id5_copy(id5);
-    REQUIRE(id5_copy.wordCount() == 5);
+    REQUIRE(id5_copy.size() == 5);
     REQUIRE(id5 == id5_copy);
     edm::TransitionRecordID id5_move(std::move(id5));
-    REQUIRE(id5_move.wordCount() == 5);
+    REQUIRE(id5_move.size() == 5);
     REQUIRE(id5_move == id5_copy);
   }
   SECTION("copy and move") {
     edm::TransitionRecordID id1(1U);
     edm::TransitionRecordID id2(id1);
-    edm::TransitionRecordID id3(std::move(id1));
     REQUIRE(id1 == id2);
+    edm::TransitionRecordID id3(std::move(id1));
     REQUIRE(id2 == id3);
     edm::TransitionRecordID id4;
     id4 = id2;
