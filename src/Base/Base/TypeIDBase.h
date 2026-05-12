@@ -56,6 +56,8 @@ namespace edm {
     constexpr bool operator==(const TypeIDBase& b) const noexcept { return *t_ == *b.t_; }
     constexpr bool operator!=(const TypeIDBase& b) const noexcept { return *t_ != *b.t_; }
 
+    std::size_t hash_code() const noexcept { return t_->hash_code(); }
+
   protected:
     constexpr const std::type_info& typeInfo() const { return *t_; }
 
