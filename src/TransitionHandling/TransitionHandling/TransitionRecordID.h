@@ -4,6 +4,7 @@
 #include <array>
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 
 /*
  * Transition records are grouped into a hierarchy of transitions. For example, a Run transition may have multiple Lumi transitions
@@ -130,6 +131,7 @@ namespace edm {
     std::uint32_t size_ = 0;
   };
 
+  std::ostream& operator<<(std::ostream& os, TransitionRecordID const& id);
 }  // namespace edm
 
 #endif

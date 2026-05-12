@@ -45,4 +45,16 @@ namespace edm {
       size_ = currentUsedWords + 1;
     }
   }
+
+  std::ostream& operator<<(std::ostream& os, TransitionRecordID const& id) {
+    os << "TransitionRecordID(";
+    for (auto it = id.begin(); it != id.end(); ++it) {
+      if (it != id.begin()) {
+        os << ", ";
+      }
+      os << *it;
+    }
+    os << ")";
+    return os;
+  }
 }  // namespace edm
