@@ -2,21 +2,21 @@
 #define DataModel_TransitionRecordKey_h
 
 #include "Base/TypeIDBase.h"
-#include <string>
+#include <string_view>
 
 namespace edm {
   class TransitionRecordKey {
   public:
-    TransitionRecordKey() = default;
-    TransitionRecordKey(TypeIDBase typeID) : typeID_(typeID) {}
+    constexpr TransitionRecordKey() = default;
+    constexpr TransitionRecordKey(TypeIDBase typeID) : typeID_(typeID) {}
 
-    TypeIDBase const& typeID() const { return typeID_; }
+    constexpr TypeIDBase const& typeID() const { return typeID_; }
     std::string name() const;
 
     constexpr std::strong_ordering operator<=>(TransitionRecordKey const& other) const noexcept = default;
 
     template <typename T>
-    static TransitionRecordKey makeKey() {
+    static constexpr TransitionRecordKey makeKey() {
       return TransitionRecordKey(TypeIDBase(typeid(T)));
     }
 
