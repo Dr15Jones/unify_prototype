@@ -1,0 +1,6 @@
+add_executable(TestTransitionHandling test_catch2_schedule.cc test_catch2_transitionrecordid.cc)
+target_link_libraries(TestTransitionHandling PUBLIC DataModel Concurrency TransitionHandling Catch2::Catch2WithMain)
+
+include(CTest)
+include(Catch)
+catch_discover_tests(TestTransitionHandling)
