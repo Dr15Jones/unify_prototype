@@ -78,6 +78,7 @@ namespace edm {
   };
 
   template <typename F>
+    requires std::invocable<F, std::exception_ptr const*>
   class FunctorWaitingTask : public WaitingTask {
   public:
     explicit FunctorWaitingTask(F f) : func_(std::move(f)) {}
@@ -89,6 +90,7 @@ namespace edm {
   };
 
   template <typename F>
+    requires std::invocable<F, std::exception_ptr const*>
   FunctorWaitingTask<F>* make_waiting_task(F f) {
     return new FunctorWaitingTask<F>(std::move(f));
   }
