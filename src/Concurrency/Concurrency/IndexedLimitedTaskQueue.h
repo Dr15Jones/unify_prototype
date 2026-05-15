@@ -52,11 +52,11 @@ namespace edm {
        * \param[in] iAction Must be a functor that takes an size_t argument and return no values.
        */
     template <typename T>
-    requires requires(T&& t) { t(size_t(0)); }
+      requires requires(T&& t) { t(size_t(0)); }
     void push(oneapi::tbb::task_group& iGroup, T&& iAction);
 
     template <typename T>
-    requires requires(T&& t) { t(size_t(0)); }
+      requires requires(T&& t) { t(size_t(0)); }
     void pushToAll(oneapi::tbb::task_group& iGroup, T&& iAction);
 
     class Resumer {
@@ -110,6 +110,10 @@ namespace edm {
       requires requires(T&& t, Resumer&& r, size_t s) { t(std::move(r), s); }
     void pushAndPause(oneapi::tbb::task_group& iGroup, T&& iAction);
 
+    template <typename T>
+      requires requires(T&& t, Resumer&& r, size_t s) { t(std::move(r), s); }
+    void pushToAllAndPause(oneapi::tbb::task_group& iGroup, T&& iAction);
+
     unsigned int concurrencyLimit() const { return m_queues.size(); }
 
   private:
@@ -118,7 +122,7 @@ namespace edm {
   };
 
   template <typename T>
-  requires requires(T&& t) { t(size_t(0)); }
+    requires requires(T&& t) { t(size_t(0)); }
   void IndexedLimitedTaskQueue::push(oneapi::tbb::task_group& iGroup, T&& iAction) {
     auto set_to_run = std::make_shared<std::atomic<bool>>(false);
     size_t index = 0;
@@ -133,7 +137,7 @@ namespace edm {
   }
 
   template <typename T>
-  requires requires(T&& t) { t(size_t(0)); }
+    requires requires(T&& t) { t(size_t(0)); }
   void IndexedLimitedTaskQueue::pushToAll(oneapi::tbb::task_group& iGroup, T&& iAction) {
     size_t index = 0;
     for (auto& q : m_queues) {
@@ -153,6 +157,19 @@ namespace edm {
           q.pause();
           iAction(Resumer(&q), index);
         }
+      });
+      ++index;
+    }
+  }
+
+  template <typename T>
+    requires requires(T&& t, IndexedLimitedTaskQueue::Resumer&& r, size_t s) { t(std::move(r), s); }
+  void IndexedLimitedTaskQueue::pushToAllAndPause(oneapi::tbb::task_group& iGroup, T&& iAction) {
+    size_t index = 0;
+    for (auto& q : m_queues) {
+      q.push(iGroup, [&q, iAction, index]() mutable {
+        q.pause();
+        iAction(Resumer(&q), index);
       });
       ++index;
     }
