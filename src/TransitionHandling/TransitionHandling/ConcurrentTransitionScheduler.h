@@ -6,6 +6,7 @@
 #include <memory>
 #include "Concurrency/IndexedLimitedTaskQueue.h"
 #include "Concurrency/WaitingTaskHolder.h"
+#include "Concurrency/WaitingTaskList.h"
 #include "DataModel/TransitionRecordKey.h"
 #include "DataModel/TransitionRecordKeyHash.h"
 #include "TransitionHandling/TransitionRecordID.h"
@@ -32,20 +33,24 @@ namespace edm {
 class ConcurrentTransitionScheduler {
 public:
   ConcurrentTransitionScheduler(edm::TransitionRecordKey transitionKey, unsigned int iNQueues)
-      : transition_(transitionKey), queue_(iNQueues), streamRecords_(iNQueues), streamHeldResources_(iNQueues) {}
+      : transition_(transitionKey), queue_(iNQueues), waitingDependentTransitionTasks_(iNQueues), concurrentRecords_(iNQueues), concurrentHeldResources_(iNQueues) {}
   void addDependentScheduler(ConcurrentTransitionScheduler& scheduler) {
     dependentSchedulers_.push_back(&scheduler);
     scheduler.dependentUponTransition(transition_);
   }
   void dependentUponTransition(edm::TransitionRecordKey transitionKey) {
     dataDependentTransitions_.emplace(transitionKey, std::shared_ptr<ConcurrentTransitionResource>());
-    for (auto& resource : streamHeldResources_) {
+    for (auto& resource : concurrentHeldResources_) {
       resource.resize(dataDependentTransitions_.size());
     }
   }
 
   void addBeginAction(std::unique_ptr<AsyncActionBase> action) { beginActions_.push_back(std::move(action)); }
   void addEndAction(std::unique_ptr<AsyncActionBase> action) { endActions_.push_back(std::move(action)); }
+  void addDataDependentBeginAction(edm::TransitionRecordKey key, std::unique_ptr<AsyncActionBase> action) {
+    dependentBeginActions_[key].push_back(std::move(action));
+  }
+  void addDataDependentEndAction(edm::TransitionRecordKey key, std::unique_ptr<AsyncActionBase> action) { dependentEndActions_[key].push_back(std::move(action)); }
 
   //Must only be called by TransitionsDistributor (as it serializes the calls to readAsync and tryToMergeAsync)
   void doneProcessing();
@@ -57,6 +62,7 @@ public:
   //called while TransitionsDistributor is still paused, so we don't have to worry about synchronization here.
   void newDataDependentTransitionComing(edm::TransitionRecordKey transitionKey,
                                         std::shared_ptr<ConcurrentTransitionResource> resource);
+  void newDataDependentTransitionAvailable(edm::TransitionRecordKey transitionKey, edm::WaitingTaskList& waitingTasks, edm::WaitingTaskHolder holder);
 
   void newFileComing(std::weak_ptr<FileTransitionResource> resource);
 
@@ -68,15 +74,18 @@ private:
   //called only when TransitionDistributor is paused, so we don't have to worry about synchronization here.
   void holdResources(edm::ConcurrentTransitionID id);
   void releaseResources(edm::ConcurrentTransitionID id);
-  //Called while the TransitionDistrobutor is still paused, so we don't have to worry about synchronization here.
+  //Called while the TransitionDistributor is still paused, so we don't have to worry about synchronization here.
   void announceNewTransitionComing(edm::ConcurrentTransitionID index,
                                    edm::TransitionRecordID const& recordID,
                                    edm::IndexedLimitedTaskQueue::Resumer resumer,
                                    edm::WaitingTaskHolder holder);
-  void beginGlobalAsync(edm::ConcurrentTransitionID stream, edm::WaitingTaskHolder holder);
-  void beginDependentTransitionAsync(edm::TransitionRecordKey, edm::WaitingTaskHolder);
-  void endDependentTransitionAsync(edm::TransitionRecordKey, edm::WaitingTaskHolder);
-  void endGlobalAsync(edm::ConcurrentTransitionID stream, edm::WaitingTaskHolder holder);
+  void announceNewTransitionAvailable(edm::ConcurrentTransitionID index, edm::WaitingTaskHolder holder);
+  void processBeginAsync(edm::ConcurrentTransitionID stream, edm::WaitingTaskHolder holder);
+  void beginDependentTransitionAsync(edm::TransitionRecordKey, edm::WaitingTaskList&, edm::WaitingTaskHolder);
+  void processBeginDependentTransitionAsync(ConcurrentTransitionID stream, edm::TransitionRecordKey const&, edm::WaitingTaskHolder);
+  void endDependentTransitionAsync(edm::TransitionRecordKey const&,  edm::TransitionRecordID const&, edm::WaitingTaskHolder);
+  void processEndDependentTransitionAsync(ConcurrentTransitionID stream, edm::TransitionRecordKey const&, edm::TransitionRecordID const&, edm::WaitingTaskHolder);
+  void processEndAsync(edm::ConcurrentTransitionID stream, edm::WaitingTaskHolder holder);
  
   edm::TransitionRecordKey transition_;
   edm::IndexedLimitedTaskQueue queue_;
@@ -86,10 +95,13 @@ private:
   std::unordered_map<edm::TransitionRecordKey, std::shared_ptr<ConcurrentTransitionResource>, edm::TransitionRecordKeyHash>
       dataDependentTransitions_;
   std::weak_ptr<FileTransitionResource> fileTransitionResource_;
-  std::vector<edm::TransitionRecordID> streamRecords_;
-  std::vector<std::vector<std::shared_ptr<ConcurrentTransitionResource>>> streamHeldResources_;
+  std::vector<edm::WaitingTaskList> waitingDependentTransitionTasks_;
+  std::vector<edm::TransitionRecordID> concurrentRecords_;
+  std::vector<std::vector<std::shared_ptr<ConcurrentTransitionResource>>> concurrentHeldResources_;
   std::vector<std::unique_ptr<AsyncActionBase>> beginActions_;
   std::vector<std::unique_ptr<AsyncActionBase>> endActions_;
+  std::unordered_map<edm::TransitionRecordKey, std::vector<std::unique_ptr<AsyncActionBase>>, edm::TransitionRecordKeyHash> dependentBeginActions_;
+  std::unordered_map<edm::TransitionRecordKey, std::vector<std::unique_ptr<AsyncActionBase>>, edm::TransitionRecordKeyHash> dependentEndActions_;
 };
 
 }
