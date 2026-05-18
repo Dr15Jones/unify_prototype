@@ -21,7 +21,8 @@ namespace edm {
       coordinator_.peakNextTransitionAsync(nextTransition_, std::move(holder));
     }) | chain::then([this, finalTask = holder](edm::WaitingTaskHolder holder) {
       if (nextTransition_) {
-        std::cout << " New transition peeked: " << static_cast<int>(nextTransition_->state()) << std::endl;
+        std::string recordKeyStr = nextTransition_->recordKey() ? nextTransition_->recordKey()->name() : "";
+        std::cout << " New transition peeked: " << static_cast<int>(nextTransition_->state()) <<" " << recordKeyStr << std::endl;
       } else {
         std::cout << " No transition peeked" << std::endl;
       }
