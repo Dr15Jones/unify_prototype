@@ -20,6 +20,10 @@ namespace edm {
                                                 edm::WaitingTaskHolder holder) {
     using namespace edm::waiting_task;
     transitionResource_.reset();
+    for (auto* scheduler : dependentSchedulers_) {
+      scheduler->newDataDependentTransitionComing(transition_);
+    }
+
     std::shared_ptr<FileTransitionResource> fileResource = fileTransitionResource_.lock();
     assert(fileResource);
     std::unique_ptr<edm::ConcurrentTransitionID> activeStream =
@@ -56,11 +60,29 @@ namespace edm {
         chain::runLast(std::move(holder));
   }
 
+  void ConcurrentTransitionScheduler::newDataDependentTransitionComing(edm::TransitionRecordKey transitionKey) {
+    for(auto* scheduler : dependentSchedulers_) {
+      scheduler->newDataDependentTransitionComing(transitionKey);
+    }
+    auto findIt = dataDependentTransitions_.find(transitionKey);
+    if (findIt == dataDependentTransitions_.end()) {
+      throw std::runtime_error("Transition " + transitionKey.name() + " is not already a data dependent transition of " + transition_.name());
+    }
+    dataDependentTransitions_[transitionKey].reset();
+    transitionResource_.reset();
+  }
+
   //called while TransitionsDistributor is still paused, so we don't have to worry about synchronization here.
-  void ConcurrentTransitionScheduler::newDataDependentTransitionComing(
+  void ConcurrentTransitionScheduler::newDataDependentTransitionResource(
       edm::TransitionRecordKey transitionKey, std::shared_ptr<ConcurrentTransitionResource> resource) {
     for (auto* scheduler : dependentSchedulers_) {
-      scheduler->newDataDependentTransitionComing(transitionKey, resource);
+      scheduler->newDataDependentTransitionResource(transitionKey, resource);
+    }
+    //if a new dependent is coming than this resource needs to be closed out
+    transitionResource_.reset();
+    auto findIt = dataDependentTransitions_.find(transitionKey);
+    if (findIt == dataDependentTransitions_.end()) {
+      throw std::runtime_error("Transition " + transitionKey.name() + " is not already a data dependent transition of " + transition_.name());
     }
     dataDependentTransitions_[transitionKey] = std::move(resource);
     auto task = edm::waiting_task::chain::first(
@@ -147,7 +169,7 @@ namespace edm {
                 chain::lastTask(std::move(holder));
     transitionResource_ = std::make_shared<ConcurrentTransitionResource>(index, recordID, std::move(task));
     for (auto* scheduler : dependentSchedulers_) {
-      scheduler->newDataDependentTransitionComing(transition_, transitionResource_);
+      scheduler->newDataDependentTransitionResource(transition_, transitionResource_);
     }
   }
   void ConcurrentTransitionScheduler::processBeginAsync(edm::ConcurrentTransitionID stream,

@@ -66,7 +66,8 @@ public:
                  edm::WaitingTaskHolder holder);
  
   //called while TransitionsDistributor is still paused, so we don't have to worry about synchronization here.
-  void newDataDependentTransitionComing(edm::TransitionRecordKey transitionKey,
+  void newDataDependentTransitionComing(edm::TransitionRecordKey transitionKey);
+  void newDataDependentTransitionResource(edm::TransitionRecordKey transitionKey,
                                         std::shared_ptr<ConcurrentTransitionResource> resource);
   void newDataDependentTransitionAvailable(edm::TransitionRecordKey transitionKey, edm::WaitingTaskList& waitingTasks, edm::WaitingTaskHolder holder);
 
