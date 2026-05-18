@@ -37,11 +37,17 @@ public:
   void addDependentScheduler(ConcurrentTransitionScheduler& scheduler) {
     dependentSchedulers_.push_back(&scheduler);
     scheduler.dependentUponTransition(transition_);
+    for(auto& [key, resource] : dataDependentTransitions_) {
+      scheduler.dependentUponTransition(key);
+    }
   }
   void dependentUponTransition(edm::TransitionRecordKey transitionKey) {
     dataDependentTransitions_.emplace(transitionKey, std::shared_ptr<ConcurrentTransitionResource>());
     for (auto& resource : concurrentHeldResources_) {
       resource.resize(dataDependentTransitions_.size());
+    }
+    for (auto* scheduler : dependentSchedulers_) {
+      scheduler->dependentUponTransition(transitionKey);
     }
   }
 
