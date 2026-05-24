@@ -28,6 +28,7 @@
 #include <atomic>
 #include <vector>
 #include <memory>
+#include <oneapi/tbb/concurrent_queue.h>
 
 #include "TransitionHandling/ConcurrentTransitionTaskQueue.h"
 #include "Utilities/thread_safety_macros.h"
@@ -42,7 +43,9 @@ namespace edm {
   public:
     friend class ConcurrentTransitionTaskQueue;
 
-    ConcurrentTransitionsTaskQueue(unsigned int iLimit) : m_processing(std::make_shared<std::atomic<bool>>(false)) {
+    ConcurrentTransitionsTaskQueue(unsigned int iLimit)
+        : m_availableQueues{}, m_processing(std::make_shared<std::atomic<bool>>(false)) {
+      m_availableQueues.set_capacity(iLimit);
       m_queues.reserve(iLimit);
       for (unsigned int i = 0; i < iLimit; ++i) {
         m_queues.emplace_back(*this, i, m_processing);
@@ -124,14 +127,15 @@ namespace edm {
           oTask = t;
           return true;
         } else {
-          m_availableQueues.push(iQueueIndex);
+          [[maybe_unused]] auto succeeded = m_availableQueues.try_push(iQueueIndex);
+          assert(succeeded);
         }
       }
       return false;
     }
     // ---------- member data --------------------------------
     std::vector<ConcurrentTransitionTaskQueue> m_queues;
-    oneapi::tbb::concurrent_queue<size_t> m_availableQueues;
+    oneapi::tbb::concurrent_bounded_queue<size_t> m_availableQueues;
     std::atomic<ConcurrentTransitionTaskBase*> m_sharedTask = nullptr;
     std::shared_ptr<std::atomic<bool>> m_processing;
     std::atomic<bool> m_sharedTaskAndQueue{false};
@@ -145,7 +149,8 @@ namespace edm {
       for (auto& q : m_queues) {
         q.push(iGroup, [&q, this](std::size_t index) {
           q.processing(m_processing);
-          m_availableQueues.push(index);
+          [[maybe_unused]] auto succeeded = m_availableQueues.try_push(index);
+          assert(succeeded);
         });
       }
     }
