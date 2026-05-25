@@ -59,6 +59,7 @@
 #include "oneapi/tbb/task_group.h"
 #include "oneapi/tbb/concurrent_queue.h"
 #include "Utilities/thread_safety_macros.h"
+#include "Concurrency/SpinLock.h"
 
 // user include files
 #include "TransitionHandling/ConcurrentTransitionTaskBase.h"
@@ -75,7 +76,7 @@ namespace edm {
         : m_sharedQueue{&iSharedQueue},
           m_index{iIndex},
           m_taskChosen{false},
-          m_pickingNextTask{false},
+          m_pickingNextTask{},
           m_processing{iProcessing} {}
 
     ConcurrentTransitionTaskQueue(ConcurrentTransitionTaskQueue&& iOther)
@@ -84,8 +85,8 @@ namespace edm {
           m_pauseCount(iOther.m_pauseCount.exchange(0)),
           m_index{iOther.m_index},
           m_taskChosen(iOther.m_taskChosen.exchange(false)),
-          m_pickingNextTask(false) {
-      assert(m_tasks.empty() and m_taskChosen == false and iOther.m_pickingNextTask == false);
+          m_pickingNextTask{} {
+      assert(m_tasks.empty() and m_taskChosen == false and iOther.m_pickingNextTask.isLocked() == false);
     }
     ConcurrentTransitionTaskQueue(const ConcurrentTransitionTaskQueue&) = delete;
     const ConcurrentTransitionTaskQueue& operator=(const ConcurrentTransitionTaskQueue&) = delete;
@@ -154,7 +155,7 @@ namespace edm {
     std::atomic<unsigned long> m_pauseCount;
     std::size_t m_index{0};
     std::atomic<bool> m_taskChosen;
-    std::atomic<bool> m_pickingNextTask;
+    edm::SpinLock m_pickingNextTask;
   };
 
   template <typename T>

@@ -13,6 +13,7 @@
 
 // system include files
 #include "oneapi/tbb/task_group.h"
+#include <mutex>
 
 // user include files
 #include "TransitionHandling/ConcurrentTransitionTaskQueue.h"
@@ -93,9 +94,7 @@ ConcurrentTransitionTaskBase* ConcurrentTransitionTaskQueue::pickNextTask() {
   //need pop task and setting m_taskChosen to be atomic to avoid
   // case where thread pauses just after try_pop failed but then
   // a task is added and that call fails the check on m_taskChosen
-  while (m_pickingNextTask.exchange(true)) {
-  }
-  auto sentry = edm::make_sentry(&m_pickingNextTask, [](auto* v) { v->store(false); });
+  std::lock_guard<edm::SpinLock> lock{m_pickingNextTask};
 
   if LIKELY (not m_taskChosen.exchange(true)) {
     ConcurrentTransitionTaskBase* t = nullptr;

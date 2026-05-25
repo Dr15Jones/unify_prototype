@@ -28,9 +28,12 @@
 #include <atomic>
 #include <vector>
 #include <memory>
+#include <mutex>
+#include <utility>
 #include <oneapi/tbb/concurrent_queue.h>
 
 #include "TransitionHandling/ConcurrentTransitionTaskQueue.h"
+#include "Concurrency/SpinLock.h"
 #include "Utilities/thread_safety_macros.h"
 #include "Utilities/make_sentry.h"
 #include "Utilities/Likely.h"
@@ -119,12 +122,9 @@ namespace edm {
                             std::atomic<bool>& iProcessing) {
       if (iProcessing.load()) {
         //Need to have sole access to m_sharedTask and m_availableQueues to avoid race conditions
-        while (m_sharedTaskAndQueue.exchange(true)) {
-        }
-        auto sentry = edm::make_sentry(&m_sharedTaskAndQueue, [](auto* v) { v->store(false); });
-        auto t = m_sharedTask.exchange(nullptr);
-        if (t) {
-          oTask = t;
+        std::lock_guard<edm::SpinLock> lock{m_sharedTaskAndQueue};
+        if (m_sharedTask) {
+          oTask = std::exchange(m_sharedTask, nullptr);
           return true;
         } else {
           [[maybe_unused]] auto succeeded = m_availableQueues.try_push(iQueueIndex);
@@ -136,9 +136,9 @@ namespace edm {
     // ---------- member data --------------------------------
     std::vector<ConcurrentTransitionTaskQueue> m_queues;
     oneapi::tbb::concurrent_bounded_queue<size_t> m_availableQueues;
-    std::atomic<ConcurrentTransitionTaskBase*> m_sharedTask = nullptr;
+    ConcurrentTransitionTaskBase* m_sharedTask = nullptr;  //guarded by m_sharedTaskAndQueue
     std::shared_ptr<std::atomic<bool>> m_processing;
-    std::atomic<bool> m_sharedTaskAndQueue{false};
+    edm::SpinLock m_sharedTaskAndQueue;
   };
 
   template <typename T>
@@ -160,15 +160,14 @@ namespace edm {
     };
     {
       //Need to have sole access to m_sharedTask and m_availableQueues to avoid race conditions
-      while (m_sharedTaskAndQueue.exchange(true)) {
-      }
-      auto sentry = edm::make_sentry(&m_sharedTaskAndQueue, [](auto* v) { v->store(false); });
+      std::lock_guard<edm::SpinLock> lock{m_sharedTaskAndQueue};
 
       std::size_t index = 0;
       if LIKELY (m_availableQueues.try_pop(index)) {
         //note adding to the queue could be moved out of the critical secction
         m_queues[index].push(iGroup, std::move(task));
       } else {
+        assert(m_sharedTask == nullptr);
         m_sharedTask = new ConcurrentTransitionQueuedTask(iGroup, std::move(task));
       }
     }
