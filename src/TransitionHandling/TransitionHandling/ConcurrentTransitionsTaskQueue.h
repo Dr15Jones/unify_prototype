@@ -154,19 +154,19 @@ namespace edm {
       m_queues[index].pause();
       iAction(Resumer(&m_queues[index]), index);
     };
+    std::size_t index = 0;
     {
       //Need to have sole access to m_sharedTask and m_availableQueues to avoid race conditions
       std::lock_guard<edm::SpinLock> lock{m_sharedTaskAndQueue};
 
-      std::size_t index = 0;
-      if LIKELY (m_availableQueues.try_pop(index)) {
-        //note adding to the queue could be moved out of the critical secction
-        m_queues[index].push(iGroup, std::move(task));
-      } else {
+      if UNLIKELY (not m_availableQueues.try_pop(index)) {
         assert(m_sharedTask == nullptr);
         m_sharedTask = new ConcurrentTransitionQueuedTask(iGroup, std::move(task));
+        return;
       }
     }
+    //This must be out of the critical section to avoid possible lock inversion with the locks in ConcurrentTransitionTaskQueue::pickNextTask
+    m_queues[index].push(iGroup, std::move(task));
   }
 
   template <typename T>
