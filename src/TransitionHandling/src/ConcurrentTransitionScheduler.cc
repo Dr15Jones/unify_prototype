@@ -236,7 +236,11 @@ namespace edm {
                                                                          edm::TransitionRecordKey const& key,
                                                                          edm::TransitionRecordID const& recordID,
                                                                          edm::WaitingTaskHolder holder) {
-    for (const auto& action : dependentEndActions_[key]) {
+    auto it = dependentEndActions_.find(key);
+    if (it == dependentEndActions_.end()) {
+      return;
+    }
+    for (const auto& action : it->second) {
       action->performAsync(holder, key, stream, recordID);
     }
     // Simulate ending the dependent transition here
