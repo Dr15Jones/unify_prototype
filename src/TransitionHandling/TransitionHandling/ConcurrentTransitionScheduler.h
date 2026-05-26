@@ -4,11 +4,11 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
-#include "Concurrency/IndexedLimitedTaskQueue.h"
 #include "Concurrency/WaitingTaskHolder.h"
 #include "Concurrency/WaitingTaskList.h"
 #include "DataModel/TransitionRecordKey.h"
 #include "DataModel/TransitionRecordKeyHash.h"
+#include "TransitionHandling/ConcurrentTransitionsTaskQueue.h"
 #include "TransitionHandling/TransitionRecordID.h"
 #include "TransitionHandling/ConcurrentTransitionID.h"
 #include "TransitionHandling/AsyncActionBase.h"
@@ -84,7 +84,7 @@ private:
   //Called while the TransitionDistributor is still paused, so we don't have to worry about synchronization here.
   void announceNewTransitionComing(edm::ConcurrentTransitionID index,
                                    edm::TransitionRecordID const& recordID,
-                                   edm::IndexedLimitedTaskQueue::Resumer resumer,
+                                   edm::ConcurrentTransitionsTaskQueue::Resumer resumer,
                                    edm::WaitingTaskHolder holder);
   void announceNewTransitionAvailable(edm::ConcurrentTransitionID index, edm::WaitingTaskHolder holder);
   void processBeginAsync(edm::ConcurrentTransitionID stream, edm::WaitingTaskHolder holder);
@@ -95,7 +95,7 @@ private:
   void processEndAsync(edm::ConcurrentTransitionID stream, edm::WaitingTaskHolder holder);
  
   edm::TransitionRecordKey transition_;
-  edm::IndexedLimitedTaskQueue queue_;
+  edm::ConcurrentTransitionsTaskQueue queue_;
   std::shared_ptr<ConcurrentTransitionResource> transitionResource_;
   std::vector<ConcurrentTransitionScheduler*> dependentSchedulers_;
   //this is only modified or read while the TransitionDistributor is paused, so we don't have to worry about synchronization here.

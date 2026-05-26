@@ -149,7 +149,7 @@ namespace edm {
   //Called while the TransitionDistributor is still paused, so we don't have to worry about synchronization here.
   void ConcurrentTransitionScheduler::announceNewTransitionComing(edm::ConcurrentTransitionID index,
                                                                   edm::TransitionRecordID const& recordID,
-                                                                  edm::IndexedLimitedTaskQueue::Resumer resumer,
+                                                                  edm::ConcurrentTransitionsTaskQueue::Resumer resumer,
                                                                   edm::WaitingTaskHolder holder) {
     using namespace edm::waiting_task;
     waitingDependentTransitionTasks_[index.id()].reset();
