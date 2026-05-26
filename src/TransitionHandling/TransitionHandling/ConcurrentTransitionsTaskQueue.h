@@ -147,11 +147,7 @@ namespace edm {
     if (not m_processing->load()) {
       m_processing = std::make_shared<std::atomic<bool>>(true);
       for (auto& q : m_queues) {
-        q.push(iGroup, [&q, this](std::size_t index) {
-          q.processing(m_processing);
-          [[maybe_unused]] auto succeeded = m_availableQueues.try_push(index);
-          assert(succeeded);
-        });
+        q.push(iGroup, [&q, this](std::size_t index) { q.processing(m_processing); });
       }
     }
     auto task = [iAction, this](std::size_t index) mutable {
