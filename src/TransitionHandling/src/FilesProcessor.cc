@@ -13,7 +13,7 @@ namespace edm {
                 [this, &coordinator, holder = std::move(nextTask), finalTask = std::move(finalTask)]() mutable {
                   announceNewFileComing(std::move(finalTask));
                   queue_.pause();
-                  std::cout << "file transition processed" << std::endl;
+                  //std::cout << "file transition processed" << std::endl;
                   //Would call any file handling here
                   coordinator.goToNextTransitionAsync(std::move(holder));
                 });
@@ -39,7 +39,7 @@ namespace edm {
 
   void FilesProcessor::endFileAsync(edm::WaitingTaskHolder holder) {
     // Simulate ending the file transition here
-    std::cout << "ending file transition" << std::endl;
+    //std::cout << "ending file transition" << std::endl;
     holder.doneWaiting(std::exception_ptr{});
   }
 }

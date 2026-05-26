@@ -20,12 +20,13 @@ namespace edm {
     chain::first([this](edm::WaitingTaskHolder holder) {
       coordinator_.peakNextTransitionAsync(nextTransition_, std::move(holder));
     }) | chain::then([this, finalTask = holder](edm::WaitingTaskHolder holder) {
-      if (nextTransition_) {
+      /*if (nextTransition_) {
         std::string recordKeyStr = nextTransition_->recordKey() ? nextTransition_->recordKey()->name() : "";
-        std::cout << " New transition peeked: " << static_cast<int>(nextTransition_->state()) <<" " << recordKeyStr << std::endl;
+        //std::cout << " New transition peeked: " << static_cast<int>(nextTransition_->state()) <<" " << recordKeyStr << std::endl;
       } else {
-        std::cout << " No transition peeked" << std::endl;
+        //std::cout << " No transition peeked" << std::endl;
       }
+        */
 
       if (!nextTransition_ || nextTransition_.value().state() == edm::SourceNextState::Stop) {
         // No more transitions to process, just finish
