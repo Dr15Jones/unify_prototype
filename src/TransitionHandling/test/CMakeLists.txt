@@ -5,6 +5,11 @@ add_executable(TestTransitionHandling
 )
 target_link_libraries(TestTransitionHandling PUBLIC DataModel Concurrency TransitionHandling Catch2::Catch2WithMain)
 
+add_executable(sourceCoordinatorSchedulerStandalone
+	sourceCoordinatorSchedulerStandalone.cc
+)
+target_link_libraries(sourceCoordinatorSchedulerStandalone PUBLIC DataModel Concurrency TransitionHandling)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(TestTransitionHandling)
