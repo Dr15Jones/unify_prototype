@@ -61,12 +61,13 @@ namespace edm {
   }
 
   void ConcurrentTransitionScheduler::newDataDependentTransitionComing(edm::TransitionRecordKey transitionKey) {
-    for(auto* scheduler : dependentSchedulers_) {
+    for (auto* scheduler : dependentSchedulers_) {
       scheduler->newDataDependentTransitionComing(transitionKey);
     }
     auto findIt = dataDependentTransitions_.find(transitionKey);
     if (findIt == dataDependentTransitions_.end()) {
-      throw std::runtime_error("Transition " + transitionKey.name() + " is not already a data dependent transition of " + transition_.name());
+      throw std::runtime_error("Transition " + transitionKey.name() +
+                               " is not already a data dependent transition of " + transition_.name());
     }
     dataDependentTransitions_[transitionKey].reset();
     transitionResource_.reset();
@@ -82,7 +83,8 @@ namespace edm {
     transitionResource_.reset();
     auto findIt = dataDependentTransitions_.find(transitionKey);
     if (findIt == dataDependentTransitions_.end()) {
-      throw std::runtime_error("Transition " + transitionKey.name() + " is not already a data dependent transition of " + transition_.name());
+      throw std::runtime_error("Transition " + transitionKey.name() +
+                               " is not already a data dependent transition of " + transition_.name());
     }
     dataDependentTransitions_[transitionKey] = std::move(resource);
     auto task = edm::waiting_task::chain::first(
