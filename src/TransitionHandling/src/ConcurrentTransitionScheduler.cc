@@ -203,7 +203,11 @@ namespace edm {
   void ConcurrentTransitionScheduler::processBeginDependentTransitionAsync(ConcurrentTransitionID stream,
                                                                            edm::TransitionRecordKey const& key,
                                                                            edm::WaitingTaskHolder holder) {
-    for (const auto& action : dependentBeginActions_[key]) {
+    auto it = dependentBeginActions_.find(key);
+    if (it == dependentBeginActions_.end()) {
+      return;
+    }
+    for (const auto& action : it->second) {
       action->performAsync(holder, key, stream, dataDependentTransitions_[key]->recordID_);
     }
     // Simulate beginning the dependent transition here
