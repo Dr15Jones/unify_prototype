@@ -79,7 +79,7 @@ namespace edm {
                                          edm::WaitingTaskList& waitingTasks,
                                          edm::WaitingTaskHolder holder);
 
-    void newFileComing(std::weak_ptr<FileTransitionResource> resource);
+    void newFileComing(std::weak_ptr<FileTransitionResource const> resource);
 
     void tryToMergeAsync(edm::SourceCoordinator& coordinator,
                          edm::TransitionRecordID const& recordID,
@@ -123,7 +123,7 @@ namespace edm {
                        edm::TransitionRecordKeyHash>
         supporterResources_;
     //used to keep the file resource alive only until the transition has finished its begin process.
-    std::weak_ptr<FileTransitionResource> fileTransitionResource_;
+    std::weak_ptr<FileTransitionResource const> fileTransitionResource_;
     //For each stream (index) holds the waiting tasks for the dependent transitions. The tasks are informed once the transition record is available and can then run the dependent transitions when they are scheduled to run.
     std::vector<edm::WaitingTaskList> waitingDependentTransitionTasks_;
     std::vector<edm::TransitionRecordID> concurrentRecords_;

@@ -24,7 +24,7 @@ namespace edm {
       scheduler->newSupporterTransitionComing(transition_);
     }
 
-    std::shared_ptr<FileTransitionResource> fileResource = fileTransitionResource_.lock();
+    std::shared_ptr<FileTransitionResource const> fileResource = fileTransitionResource_.lock();
     assert(fileResource);
     std::unique_ptr<edm::ConcurrentTransitionID> activeStream =
         std::make_unique<edm::ConcurrentTransitionID>(std::numeric_limits<std::size_t>::max());
@@ -122,7 +122,7 @@ namespace edm {
     waitingTasks.add(std::move(task));
   }
 
-  void ConcurrentTransitionScheduler::newFileComing(std::weak_ptr<FileTransitionResource> resource) {
+  void ConcurrentTransitionScheduler::newFileComing(std::weak_ptr<FileTransitionResource const> resource) {
     fileTransitionResource_ = std::move(resource);
   }
 
