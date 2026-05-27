@@ -397,15 +397,15 @@ TEST_CASE("Test schedule", "[Schedule]") {
           kLumiKey,
           std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
               {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U)}}));
-      lumiScheduler.addDataDependentBeginAction(kRunKey, std::make_unique<PrintAction>("Lumi stream Begin"));
-      lumiScheduler.addDataDependentBeginAction(
+      lumiScheduler.addSupporterBeginAction(kRunKey, std::make_unique<PrintAction>("Lumi stream Begin"));
+      lumiScheduler.addSupporterBeginAction(
           kRunKey,
           std::make_unique<CheckTransitionAction>(
               kRunKey,
               std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
                   {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(1U)}}));
-      lumiScheduler.addDataDependentEndAction(kRunKey, std::make_unique<PrintAction>("Lumi stream End"));
-      lumiScheduler.addDataDependentEndAction(
+      lumiScheduler.addSupporterEndAction(kRunKey, std::make_unique<PrintAction>("Lumi stream End"));
+      lumiScheduler.addSupporterEndAction(
           kRunKey,
           std::make_unique<CheckTransitionAction>(
               kRunKey,
@@ -452,16 +452,16 @@ TEST_CASE("Test schedule", "[Schedule]") {
           kLumiKey,
           std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
               {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U)}}));
-      lumiScheduler.addDataDependentBeginAction(kRunKey, std::make_unique<PrintAction>("Lumi stream Begin Run"));
-      lumiScheduler.addDataDependentBeginAction(
+      lumiScheduler.addSupporterBeginAction(kRunKey, std::make_unique<PrintAction>("Lumi stream Begin Run"));
+      lumiScheduler.addSupporterBeginAction(
           kRunKey,
           std::make_unique<CheckTransitionAction>(
               kRunKey,
               std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
                   {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(1U)},
                   {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(2U)}}));
-      lumiScheduler.addDataDependentEndAction(kRunKey, std::make_unique<PrintAction>("Lumi stream End Run"));
-      lumiScheduler.addDataDependentEndAction(
+      lumiScheduler.addSupporterEndAction(kRunKey, std::make_unique<PrintAction>("Lumi stream End Run"));
+      lumiScheduler.addSupporterEndAction(
           kRunKey,
           std::make_unique<CheckTransitionAction>(
               kRunKey,
@@ -522,16 +522,16 @@ TEST_CASE("Test schedule", "[Schedule]") {
           std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
               {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U)},
               {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(1U), 2U)}}));
-      lumiScheduler.addDataDependentBeginAction(kRunKey, std::make_unique<PrintAction>("Lumi stream Begin Run"));
-      lumiScheduler.addDataDependentBeginAction(
+      lumiScheduler.addSupporterBeginAction(kRunKey, std::make_unique<PrintAction>("Lumi stream Begin Run"));
+      lumiScheduler.addSupporterBeginAction(
           kRunKey,
           std::make_unique<CheckTransitionAction>(
               kRunKey,
               std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
                   {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(1U)},
                   {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(1U)}}));
-      lumiScheduler.addDataDependentEndAction(kRunKey, std::make_unique<PrintAction>("Lumi stream End Run"));
-      lumiScheduler.addDataDependentEndAction(
+      lumiScheduler.addSupporterEndAction(kRunKey, std::make_unique<PrintAction>("Lumi stream End Run"));
+      lumiScheduler.addSupporterEndAction(
           kRunKey,
           std::make_unique<CheckTransitionAction>(
               kRunKey,
@@ -558,18 +558,18 @@ TEST_CASE("Test schedule", "[Schedule]") {
                edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(1U), 2U), 1U)},
               {edm::ConcurrentTransitionID(0),
                edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(1U), 2U), 2U)}}));
-      eventScheduler.addDataDependentBeginAction(kLumiKey, std::make_unique<PrintAction>("Event stream Begin Lumi"));
-      eventScheduler.addDataDependentBeginAction(kRunKey, std::make_unique<PrintAction>("Event stream Begin Run"));
-      eventScheduler.addDataDependentBeginAction(
+      eventScheduler.addSupporterBeginAction(kLumiKey, std::make_unique<PrintAction>("Event stream Begin Lumi"));
+      eventScheduler.addSupporterBeginAction(kRunKey, std::make_unique<PrintAction>("Event stream Begin Run"));
+      eventScheduler.addSupporterBeginAction(
           kLumiKey,
           std::make_unique<CheckTransitionAction>(
               kLumiKey,
               std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
                   {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U)},
                   {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(1U), 2U)}}));
-      eventScheduler.addDataDependentEndAction(kLumiKey, std::make_unique<PrintAction>("Event stream End Lumi"));
-      eventScheduler.addDataDependentEndAction(kRunKey, std::make_unique<PrintAction>("Event stream End Run"));
-      eventScheduler.addDataDependentEndAction(
+      eventScheduler.addSupporterEndAction(kLumiKey, std::make_unique<PrintAction>("Event stream End Lumi"));
+      eventScheduler.addSupporterEndAction(kRunKey, std::make_unique<PrintAction>("Event stream End Run"));
+      eventScheduler.addSupporterEndAction(
           kLumiKey,
           std::make_unique<CheckTransitionAction>(
               kLumiKey,
