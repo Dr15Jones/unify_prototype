@@ -41,14 +41,14 @@ namespace edm {
     void addDependentScheduler(ConcurrentTransitionScheduler& scheduler) {
       dependentSchedulers_.push_back(&scheduler);
       scheduler.supporterTransition(transition_);
-      for (auto& [key, resource] : supporterTransitions_) {
+      for (auto& [key, resource] : supporterResources_) {
         scheduler.supporterTransition(key);
       }
     }
     void supporterTransition(edm::TransitionRecordKey transitionKey) {
-      supporterTransitions_.emplace(transitionKey, std::shared_ptr<ConcurrentTransitionResource>());
+      supporterResources_.emplace(transitionKey, std::shared_ptr<ConcurrentTransitionResource>());
       for (auto& resource : concurrentHeldSupporterResources_) {
-        resource.resize(supporterTransitions_.size());
+        resource.resize(supporterResources_.size());
       }
       for (auto* scheduler : dependentSchedulers_) {
         scheduler->supporterTransition(transitionKey);
@@ -121,7 +121,7 @@ namespace edm {
     std::unordered_map<edm::TransitionRecordKey,
                        std::shared_ptr<ConcurrentTransitionResource>,
                        edm::TransitionRecordKeyHash>
-        supporterTransitions_;
+        supporterResources_;
     //used to keep the file resource alive only until the transition has finished its begin process.
     std::weak_ptr<FileTransitionResource> fileTransitionResource_;
     //For each stream (index) holds the waiting tasks for the dependent transitions. The tasks are informed once the transition record is available and can then run the dependent transitions when they are scheduled to run.

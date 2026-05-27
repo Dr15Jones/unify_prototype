@@ -10,7 +10,7 @@ namespace edm {
   //Must only be called by TransitionsDistributor (as it serializes the calls to readAsync and tryToMergeAsync)
   void ConcurrentTransitionScheduler::doneProcessing() {
     transitionResource_.reset();
-    for (auto& [_, resource] : supporterTransitions_) {
+    for (auto& [_, resource] : supporterResources_) {
       resource.reset();
     }
   }
@@ -64,12 +64,12 @@ namespace edm {
     for (auto* scheduler : dependentSchedulers_) {
       scheduler->newSupporterTransitionComing(transitionKey);
     }
-    auto findIt = supporterTransitions_.find(transitionKey);
-    if (findIt == supporterTransitions_.end()) {
+    auto findIt = supporterResources_.find(transitionKey);
+    if (findIt == supporterResources_.end()) {
       throw std::runtime_error("Transition " + transitionKey.name() +
                                " is not already a data dependent transition of " + transition_.name());
     }
-    supporterTransitions_[transitionKey].reset();
+    supporterResources_[transitionKey].reset();
     transitionResource_.reset();
   }
 
@@ -81,19 +81,19 @@ namespace edm {
     }
     //if a new dependent is coming than this resource needs to be closed out
     transitionResource_.reset();
-    auto findIt = supporterTransitions_.find(transitionKey);
-    if (findIt == supporterTransitions_.end()) {
+    auto findIt = supporterResources_.find(transitionKey);
+    if (findIt == supporterResources_.end()) {
       throw std::runtime_error("Transition " + transitionKey.name() +
                                " is not already a data dependent transition of " + transition_.name());
     }
-    supporterTransitions_[transitionKey] = std::move(resource);
-    auto task = edm::waiting_task::chain::first(
-                    [this, transitionKey, recordID = supporterTransitions_[transitionKey]->recordID_](
-                        edm::WaitingTaskHolder holder) mutable {
-                      endSupporterTransitionAsync(transitionKey, recordID, std::move(holder));
-                    }) |
-                edm::waiting_task::chain::lastTask(supporterTransitions_[transitionKey]->holder_);
-    supporterTransitions_[transitionKey]->holder_ = std::move(task);
+    supporterResources_[transitionKey] = std::move(resource);
+    auto task =
+        edm::waiting_task::chain::first([this, transitionKey, recordID = supporterResources_[transitionKey]->recordID_](
+                                            edm::WaitingTaskHolder holder) mutable {
+          endSupporterTransitionAsync(transitionKey, recordID, std::move(holder));
+        }) |
+        edm::waiting_task::chain::lastTask(supporterResources_[transitionKey]->holder_);
+    supporterResources_[transitionKey]->holder_ = std::move(task);
   }
 
   void ConcurrentTransitionScheduler::announceNewTransitionAvailable(edm::ConcurrentTransitionID index,
@@ -109,7 +109,7 @@ namespace edm {
     for (auto* scheduler : dependentSchedulers_) {
       scheduler->newSupporterTransitionAvailable(transitionKey, waitingTasks, holder);
     }
-    auto resource = supporterTransitions_[transitionKey];
+    auto resource = supporterResources_[transitionKey];
     auto task =
         edm::waiting_task::chain::first([this, transitionKey, &waitingTasks](edm::WaitingTaskHolder holder) mutable {
           beginSupporterTransitionAsync(transitionKey, waitingTasks, std::move(holder));
@@ -138,7 +138,7 @@ namespace edm {
   //called only when TransitionDistributor is paused, so we don't have to worry about synchronization here.
   void ConcurrentTransitionScheduler::holdResources(edm::ConcurrentTransitionID id) {
     std::size_t i = 0;
-    for (auto& [_, resource] : supporterTransitions_) {
+    for (auto& [_, resource] : supporterResources_) {
       concurrentHeldSupporterResources_[id.id()][i] = resource;
       ++i;
     }
@@ -208,7 +208,7 @@ namespace edm {
       return;
     }
     for (const auto& action : it->second) {
-      action->performAsync(holder, key, stream, supporterTransitions_[key]->recordID_);
+      action->performAsync(holder, key, stream, supporterResources_[key]->recordID_);
     }
     // Simulate beginning the dependent transition here
     //std::cout << "begin dependent transition " << key.name() << " for stream " << stream.id() << std::endl;
