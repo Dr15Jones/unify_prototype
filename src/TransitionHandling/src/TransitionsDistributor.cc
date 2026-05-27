@@ -18,7 +18,7 @@ namespace edm {
   void TransitionsDistributor::distributeNextTransitionAsync(edm::WaitingTaskHolder holder) {
     using namespace edm::waiting_task;
     chain::first([this](edm::WaitingTaskHolder holder) {
-      coordinator_.peakNextTransitionAsync(nextTransition_, std::move(holder));
+      coordinator_.peekNextTransitionAsync(nextTransition_, std::move(holder));
     }) | chain::then([this, finalTask = holder](edm::WaitingTaskHolder holder) {
       /*if (nextTransition_) {
         std::string recordKeyStr = nextTransition_->recordKey() ? nextTransition_->recordKey()->name() : "";
@@ -62,7 +62,7 @@ namespace edm {
                                                            edm::WaitingTaskHolder holder) {
     using namespace edm::waiting_task;
     chain::first([this](edm::WaitingTaskHolder holder) mutable {
-      coordinator_.peakNextTransitionAsync(nextTransition_, std::move(holder));
+      coordinator_.peekNextTransitionAsync(nextTransition_, std::move(holder));
     }) | chain::then([this, recordID, finalTask = holder](edm::WaitingTaskHolder holder) mutable {
       // Check if we can merge any transitions after a new file comes in
       if (!nextTransition_ || nextTransition_.value().state() != edm::SourceNextState::DataTransition) {

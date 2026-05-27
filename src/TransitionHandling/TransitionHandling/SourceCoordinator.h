@@ -16,7 +16,7 @@ namespace edm {
     class SourceCoordinator {
 public:
   SourceCoordinator(std::unique_ptr<edm::SourceBase> source) : source_(std::move(source)) { assert(source_); }
-  void peakNextTransitionAsync(std::optional<edm::SourcePeekResult>& result, edm::WaitingTaskHolder holder) {
+  void peekNextTransitionAsync(std::optional<edm::SourcePeekResult>& result, edm::WaitingTaskHolder holder) {
     queue_.push(*holder.group(), [this, &result, holder = std::move(holder)]() mutable {
       if (not cachedNextTransition_) {
         cachedNextTransition_ = source_->goToNextTransition();

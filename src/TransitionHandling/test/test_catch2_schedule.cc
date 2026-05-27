@@ -169,7 +169,7 @@ TEST_CASE("Test schedule", "[Schedule]") {
         tbb::task_group group;
         edm::FinalWaitingTask finalTask(group);
         edm::WaitingTaskHolder holder(group, &finalTask);
-        coordinator.peakNextTransitionAsync(result, std::move(holder));
+        coordinator.peekNextTransitionAsync(result, std::move(holder));
         finalTask.wait();
         REQUIRE(result);
         REQUIRE(result->state() == edm::SourceNextState::File);
@@ -185,7 +185,7 @@ TEST_CASE("Test schedule", "[Schedule]") {
         tbb::task_group group;
         edm::FinalWaitingTask finalTask(group);
         edm::WaitingTaskHolder holder(group, &finalTask);
-        coordinator.peakNextTransitionAsync(result, std::move(holder));
+        coordinator.peekNextTransitionAsync(result, std::move(holder));
         finalTask.wait();
         REQUIRE(result);
         REQUIRE(result->state() == edm::SourceNextState::DataTransition);
@@ -203,7 +203,7 @@ TEST_CASE("Test schedule", "[Schedule]") {
         tbb::task_group group;
         edm::FinalWaitingTask finalTask(group);
         edm::WaitingTaskHolder holder(group, &finalTask);
-        coordinator.peakNextTransitionAsync(result, std::move(holder));
+        coordinator.peekNextTransitionAsync(result, std::move(holder));
         finalTask.wait();
         REQUIRE(result);
         REQUIRE(result->state() == edm::SourceNextState::DataTransition);
@@ -221,7 +221,7 @@ TEST_CASE("Test schedule", "[Schedule]") {
         tbb::task_group group;
         edm::FinalWaitingTask finalTask(group);
         edm::WaitingTaskHolder holder(group, &finalTask);
-        coordinator.peakNextTransitionAsync(result, std::move(holder));
+        coordinator.peekNextTransitionAsync(result, std::move(holder));
         finalTask.wait();
         REQUIRE(result);
         REQUIRE(result->state() == edm::SourceNextState::DataTransition);
@@ -240,7 +240,7 @@ TEST_CASE("Test schedule", "[Schedule]") {
         tbb::task_group group;
         edm::FinalWaitingTask finalTask(group);
         edm::WaitingTaskHolder holder(group, &finalTask);
-        coordinator.peakNextTransitionAsync(result, std::move(holder));
+        coordinator.peekNextTransitionAsync(result, std::move(holder));
         finalTask.wait();
         REQUIRE(result);
         REQUIRE(result->state() == edm::SourceNextState::Stop);
