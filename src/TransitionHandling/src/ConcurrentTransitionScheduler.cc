@@ -65,35 +65,27 @@ namespace edm {
       scheduler->newSupporterTransitionComing(transitionKey);
     }
     auto findIt = supporterResources_.find(transitionKey);
-    if (findIt == supporterResources_.end()) {
-      throw std::runtime_error("Transition " + transitionKey.name() +
-                               " is not already a data dependent transition of " + transition_.name());
-    }
-    supporterResources_[transitionKey].reset();
+    assert(findIt != supporterResources_.end());
+    findIt->second.reset();
     transitionResource_.reset();
   }
 
   //called while TransitionsDistributor is still paused, so we don't have to worry about synchronization here.
   void ConcurrentTransitionScheduler::newSupporterTransitionResource(
-      edm::TransitionRecordKey transitionKey, std::shared_ptr<ConcurrentTransitionResource> resource) {
+      edm::TransitionRecordKey transitionKey, std::shared_ptr<ConcurrentTransitionResource const> resource) {
     for (auto* scheduler : dependentSchedulers_) {
       scheduler->newSupporterTransitionResource(transitionKey, resource);
     }
     //if a new dependent is coming than this resource needs to be closed out
     transitionResource_.reset();
     auto findIt = supporterResources_.find(transitionKey);
-    if (findIt == supporterResources_.end()) {
-      throw std::runtime_error("Transition " + transitionKey.name() +
-                               " is not already a data dependent transition of " + transition_.name());
-    }
-    supporterResources_[transitionKey] = std::move(resource);
-    auto task =
-        edm::waiting_task::chain::first([this, transitionKey, recordID = supporterResources_[transitionKey]->recordID_](
-                                            edm::WaitingTaskHolder holder) mutable {
-          endSupporterTransitionAsync(transitionKey, recordID, std::move(holder));
-        }) |
-        edm::waiting_task::chain::lastTask(supporterResources_[transitionKey]->holder_);
-    supporterResources_[transitionKey]->holder_ = std::move(task);
+    assert(findIt != supporterResources_.end());
+    auto task = edm::waiting_task::chain::first(
+                    [this, transitionKey, recordID = resource->recordID_](edm::WaitingTaskHolder holder) mutable {
+                      endSupporterTransitionAsync(transitionKey, recordID, std::move(holder));
+                    }) |
+                edm::waiting_task::chain::lastTask(resource->holder_);
+    findIt->second = std::make_shared<SupporterResource>(SupporterResource{std::move(resource), std::move(task)});
   }
 
   void ConcurrentTransitionScheduler::announceNewTransitionAvailable(edm::ConcurrentTransitionID index,
@@ -109,7 +101,9 @@ namespace edm {
     for (auto* scheduler : dependentSchedulers_) {
       scheduler->newSupporterTransitionAvailable(transitionKey, waitingTasks, holder);
     }
-    auto resource = supporterResources_[transitionKey];
+    auto findIt = supporterResources_.find(transitionKey);
+    assert(findIt != supporterResources_.end());
+    auto resource = findIt->second;
     auto task =
         edm::waiting_task::chain::first([this, transitionKey, &waitingTasks](edm::WaitingTaskHolder holder) mutable {
           beginSupporterTransitionAsync(transitionKey, waitingTasks, std::move(holder));
@@ -207,8 +201,11 @@ namespace edm {
     if (it == supporterBeginActions_.end()) {
       return;
     }
+    auto itResource = supporterResources_.find(key);
+    assert(itResource != supporterResources_.end());
+    auto recordID = itResource->second->resource_->recordID_;
     for (const auto& action : it->second) {
-      action->performAsync(holder, key, stream, supporterResources_[key]->recordID_);
+      action->performAsync(holder, key, stream, recordID);
     }
     // Simulate beginning the dependent transition here
     //std::cout << "begin dependent transition " << key.name() << " for stream " << stream.id() << std::endl;

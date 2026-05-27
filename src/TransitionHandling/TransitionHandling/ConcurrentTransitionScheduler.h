@@ -46,7 +46,7 @@ namespace edm {
       }
     }
     void supporterTransition(edm::TransitionRecordKey transitionKey) {
-      supporterResources_.emplace(transitionKey, std::shared_ptr<ConcurrentTransitionResource>());
+      supporterResources_.emplace(transitionKey, std::shared_ptr<SupporterResource>());
       for (auto& resource : concurrentHeldSupporterResources_) {
         resource.resize(supporterResources_.size());
       }
@@ -74,7 +74,7 @@ namespace edm {
     //called while TransitionsDistributor is still paused, so we don't have to worry about synchronization here.
     void newSupporterTransitionComing(edm::TransitionRecordKey transitionKey);
     void newSupporterTransitionResource(edm::TransitionRecordKey transitionKey,
-                                        std::shared_ptr<ConcurrentTransitionResource> resource);
+                                        std::shared_ptr<ConcurrentTransitionResource const> resource);
     void newSupporterTransitionAvailable(edm::TransitionRecordKey transitionKey,
                                          edm::WaitingTaskList& waitingTasks,
                                          edm::WaitingTaskHolder holder);
@@ -113,13 +113,17 @@ namespace edm {
     //Handles making sure all the streams agree on the ordering of dependent transitions.
     edm::ConcurrentTransitionsTaskQueue queue_;
     //the most recently announced transition record for this transition, used to merge the first file open with the read if possible. This is only accessed while the TransitionDistributor is paused, so we don't have to worry about synchronization here.
-    std::shared_ptr<ConcurrentTransitionResource> transitionResource_;
+    std::shared_ptr<ConcurrentTransitionResource const> transitionResource_;
     //the schedulers for the transitions that depend on this transition. Used to inform them of a new transition.
     std::vector<ConcurrentTransitionScheduler*> dependentSchedulers_;
     //Cache of the resources for the supporter transitions. Keeps those transitions open until we are no longer processing a transition which depends on them.
     //this is only modified or read while the TransitionDistributor is paused, so we don't have to worry about synchronization here.
+    struct SupporterResource {
+      std::shared_ptr<ConcurrentTransitionResource const> resource_;
+      edm::WaitingTaskHolder holder_;
+    };
     std::unordered_map<edm::TransitionRecordKey,
-                       std::shared_ptr<ConcurrentTransitionResource>,
+                       std::shared_ptr<const SupporterResource>,
                        edm::TransitionRecordKeyHash>
         supporterResources_;
     //used to keep the file resource alive only until the transition has finished its begin process.
@@ -128,7 +132,7 @@ namespace edm {
     std::vector<edm::WaitingTaskList> waitingDependentTransitionTasks_;
     std::vector<edm::TransitionRecordID> concurrentRecords_;
     //For each stream (first index) and each data dependent transition (second index) holds the resource for that transition while the stream is processing it. This allows us to release all resources for a stream at once when it finishes processing the transition.
-    std::vector<std::vector<std::shared_ptr<ConcurrentTransitionResource>>> concurrentHeldSupporterResources_;
+    std::vector<std::vector<std::shared_ptr<const SupporterResource>>> concurrentHeldSupporterResources_;
     std::vector<std::unique_ptr<AsyncActionBase>> beginActions_;
     std::vector<std::unique_ptr<AsyncActionBase>> endActions_;
     std::unordered_map<edm::TransitionRecordKey,
