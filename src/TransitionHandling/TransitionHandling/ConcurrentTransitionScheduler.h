@@ -23,11 +23,15 @@ namespace edm {
 - available: the transition record is available for other stream's processing
 - end: runs once all other streams are done with this transition
 */
+
+  //NOTE: I really should split this class up.
   class ConcurrentTransitionResource {
   public:
+    //NOTE: the replica_ and recordID_ are just stand-ins for a TransitionRecord
     edm::ConcurrentTransitionID replica_{0};
     edm::TransitionRecordID recordID_;
-    edm::WaitingTaskHolder holder_;
+    //This task is ACTUALLY what holds particular transition around and triggers the final processEndAsync.
+    edm::WaitingTaskHolder processEndTask_;
   };
 
   class ConcurrentTransitionScheduler {
@@ -46,7 +50,7 @@ namespace edm {
       }
     }
     void supporterTransition(edm::TransitionRecordKey transitionKey) {
-      supporterResources_.emplace(transitionKey, std::shared_ptr<SupporterResource>());
+      supporterResources_.emplace(transitionKey, std::nullopt);
       for (auto& resource : concurrentHeldSupporterResources_) {
         resource.resize(supporterResources_.size());
       }
@@ -120,11 +124,9 @@ namespace edm {
     //this is only modified or read while the TransitionDistributor is paused, so we don't have to worry about synchronization here.
     struct SupporterResource {
       std::shared_ptr<ConcurrentTransitionResource const> resource_;
-      edm::WaitingTaskHolder holder_;
+      edm::WaitingTaskHolder endSupporterTransitionTask_;
     };
-    std::unordered_map<edm::TransitionRecordKey,
-                       std::shared_ptr<const SupporterResource>,
-                       edm::TransitionRecordKeyHash>
+    std::unordered_map<edm::TransitionRecordKey, std::optional<SupporterResource>, edm::TransitionRecordKeyHash>
         supporterResources_;
     //used to keep the file resource alive only until the transition has finished its begin process.
     std::weak_ptr<FileTransitionResource const> fileTransitionResource_;
@@ -132,7 +134,7 @@ namespace edm {
     std::vector<edm::WaitingTaskList> waitingDependentTransitionTasks_;
     std::vector<edm::TransitionRecordID> concurrentRecords_;
     //For each stream (first index) and each data dependent transition (second index) holds the resource for that transition while the stream is processing it. This allows us to release all resources for a stream at once when it finishes processing the transition.
-    std::vector<std::vector<std::shared_ptr<const SupporterResource>>> concurrentHeldSupporterResources_;
+    std::vector<std::vector<std::optional<SupporterResource>>> concurrentHeldSupporterResources_;
     std::vector<std::unique_ptr<AsyncActionBase>> beginActions_;
     std::vector<std::unique_ptr<AsyncActionBase>> endActions_;
     std::unordered_map<edm::TransitionRecordKey,

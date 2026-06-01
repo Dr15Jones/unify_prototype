@@ -80,12 +80,7 @@ namespace edm {
     transitionResource_.reset();
     auto findIt = supporterResources_.find(transitionKey);
     assert(findIt != supporterResources_.end());
-    auto task = edm::waiting_task::chain::first(
-                    [this, transitionKey, recordID = resource->recordID_](edm::WaitingTaskHolder holder) mutable {
-                      endSupporterTransitionAsync(transitionKey, recordID, std::move(holder));
-                    }) |
-                edm::waiting_task::chain::lastTask(resource->holder_);
-    findIt->second = std::make_shared<SupporterResource>(SupporterResource{std::move(resource), std::move(task)});
+    findIt->second.emplace(std::move(resource), edm::WaitingTaskHolder{});
   }
 
   void ConcurrentTransitionScheduler::announceNewTransitionAvailable(edm::ConcurrentTransitionID index,
@@ -103,8 +98,16 @@ namespace edm {
     }
     auto findIt = supporterResources_.find(transitionKey);
     assert(findIt != supporterResources_.end());
+    //NOTE: the resource->processEndTask_ holds the task to run end transition, therefore the Transition data alive until it is run (even though the ConcurrentTransitionResource is destroyed).
+    auto endTask =
+        edm::waiting_task::chain::first([this, transitionKey, recordID = findIt->second->resource_->recordID_](
+                                            edm::WaitingTaskHolder holder) mutable {
+          endSupporterTransitionAsync(transitionKey, recordID, std::move(holder));
+        }) |
+        edm::waiting_task::chain::lastTask(findIt->second->resource_->processEndTask_);
+    findIt->second->endSupporterTransitionTask_ = std::move(endTask);
     auto resource = findIt->second;
-    auto task =
+    auto beginTask =
         edm::waiting_task::chain::first([this, transitionKey, &waitingTasks](edm::WaitingTaskHolder holder) mutable {
           beginSupporterTransitionAsync(transitionKey, waitingTasks, std::move(holder));
         }) |
@@ -113,7 +116,7 @@ namespace edm {
           resource.reset();
         }) |
         edm::waiting_task::chain::lastTask(std::move(holder));
-    waitingTasks.add(std::move(task));
+    waitingTasks.add(std::move(beginTask));
   }
 
   void ConcurrentTransitionScheduler::newFileComing(std::weak_ptr<FileTransitionResource const> resource) {
