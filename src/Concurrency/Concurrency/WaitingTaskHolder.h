@@ -47,7 +47,9 @@ namespace edm {
     }
 
     WaitingTaskHolder(const WaitingTaskHolder& iHolder) noexcept : m_task(iHolder.m_task), m_group(iHolder.m_group) {
-      m_task->increment_ref_count();
+      if (m_task) {
+        m_task->increment_ref_count();
+      }
     }
 
     WaitingTaskHolder(WaitingTaskHolder&& iOther) noexcept : m_task(iOther.m_task), m_group(iOther.m_group) {

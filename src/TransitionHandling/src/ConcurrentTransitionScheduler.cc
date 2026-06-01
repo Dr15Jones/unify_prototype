@@ -96,6 +96,13 @@ namespace edm {
     for (auto* scheduler : dependentSchedulers_) {
       scheduler->newSupporterTransitionAvailable(transitionKey, waitingTasks, holder);
     }
+
+    if (supporterBeginActions_.find(transitionKey) == supporterBeginActions_.end() && supporterEndActions_.find(transitionKey) == supporterEndActions_.end()) {
+      //no actions for this transition, we can just add the task to the waiting list and be done with it.
+      waitingTasks.add(std::move(holder));
+      return;
+    }
+
     auto findIt = supporterResources_.find(transitionKey);
     assert(findIt != supporterResources_.end());
     //NOTE: the resource->processEndTask_ holds the task to run end transition, therefore the Transition data alive until it is run (even though the ConcurrentTransitionResource is destroyed).
