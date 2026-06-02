@@ -134,7 +134,8 @@ namespace edm {
     std::vector<edm::WaitingTaskList> waitingDependentTransitionTasks_;
     std::vector<edm::TransitionRecordID> concurrentRecords_;
     //For each stream (first index) and each data dependent transition (second index) holds the resource for that transition while the stream is processing it. This allows us to release all resources for a stream at once when it finishes processing the transition.
-    std::vector<std::vector<std::optional<SupporterResource>>> concurrentHeldSupporterResources_;
+    // The endSupporterTranstionTask_ resource does NOT need to be held here since if it goes off it will add an entry to the queue.
+    std::vector<std::vector<std::shared_ptr<ConcurrentTransitionResource const>>> concurrentHeldSupporterResources_;
     std::vector<std::unique_ptr<AsyncActionBase>> beginActions_;
     std::vector<std::unique_ptr<AsyncActionBase>> endActions_;
     std::unordered_map<edm::TransitionRecordKey,

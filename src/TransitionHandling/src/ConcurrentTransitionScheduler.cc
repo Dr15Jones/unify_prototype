@@ -97,7 +97,8 @@ namespace edm {
       scheduler->newSupporterTransitionAvailable(transitionKey, waitingTasks, holder);
     }
 
-    if (supporterBeginActions_.find(transitionKey) == supporterBeginActions_.end() && supporterEndActions_.find(transitionKey) == supporterEndActions_.end()) {
+    if (supporterBeginActions_.find(transitionKey) == supporterBeginActions_.end() &&
+        supporterEndActions_.find(transitionKey) == supporterEndActions_.end()) {
       //no actions for this transition, we can just add the task to the waiting list and be done with it.
       waitingTasks.add(std::move(holder));
       return;
@@ -143,7 +144,9 @@ namespace edm {
   void ConcurrentTransitionScheduler::holdResources(edm::ConcurrentTransitionID id) {
     std::size_t i = 0;
     for (auto& [_, resource] : supporterResources_) {
-      concurrentHeldSupporterResources_[id.id()][i] = resource;
+      if (resource) {
+        concurrentHeldSupporterResources_[id.id()][i] = resource->resource_;
+      }
       ++i;
     }
   }
