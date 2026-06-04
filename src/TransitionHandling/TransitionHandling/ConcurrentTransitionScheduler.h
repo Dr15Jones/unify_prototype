@@ -130,8 +130,6 @@ namespace edm {
       ~SupporterResource();
       std::shared_ptr<ConcurrentTransitionResource const> resource_;
       ConcurrentTransitionScheduler* scheduler_ = nullptr;
-      std::vector<std::shared_ptr<SupporterResource const>> supporterOfSupporterResources_;
-      //need to hold SupporterResource for the supporter transitions in the hierarchy so the endSupporterTransitionAsync are called in the correct order.
     };
     std::unordered_map<edm::TransitionRecordKey, std::shared_ptr<SupporterResource>, edm::TransitionRecordKeyHash>
         supporterResources_;

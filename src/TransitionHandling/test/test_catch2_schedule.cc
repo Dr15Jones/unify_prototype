@@ -77,6 +77,31 @@ namespace {
     std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>> expectedTransitions_;
     unsigned int currentIndex_ = 0;
   };
+
+  class CheckTransitionOrderAction final : public edm::AsyncActionBase {
+  public:
+    CheckTransitionOrderAction(edm::TransitionRecordKey expectedKey,
+                               std::vector<unsigned int> expectedCounts,
+                               unsigned int& counter)
+        : expectedKey_(expectedKey), expectedCounts_(expectedCounts), counter_(counter) {}
+    void performAsync(edm::WaitingTaskHolder holder,
+                      edm::TransitionRecordKey const& key,
+                      edm::ConcurrentTransitionID streamID,
+                      edm::TransitionRecordID const& recordID) final {
+      REQUIRE(key == expectedKey_);
+      REQUIRE(timesCalled_ < expectedCounts_.size());
+      REQUIRE(expectedCounts_[timesCalled_] == counter_);
+      ++counter_;
+      ++timesCalled_;
+      holder.doneWaiting(std::exception_ptr{});
+    }
+
+  private:
+    edm::TransitionRecordKey expectedKey_;
+    std::vector<unsigned int> expectedCounts_;
+    unsigned int timesCalled_ = 0;
+    unsigned int& counter_;
+  };
 }  // namespace
 
 class TestSource final : public edm::SourceBase {
@@ -714,5 +739,66 @@ TEST_CASE("Test schedule", "[Schedule]") {
     distributor.addSchedulerForTransition(kEventKey, eventScheduler);
     tbb::task_arena arena(1);
     arena.execute([&distributor]() { distributor.processData(); });
+  }
+  SECTION("Test supporter end ordering") {
+    std::vector<edm::SourcePeekResult> transitions{
+        edm::SourcePeekResult{edm::SourceNextState::File},
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition, kRunKey, edm::TransitionRecordID(1U)},
+        edm::SourcePeekResult{
+            edm::SourceNextState::DataTransition, kLumiKey, edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U)},
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition,
+                              kEventKey,
+                              edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U), 1U)},
+        //Tests that new Run triggers supporter end Lumi and Run in correct order
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition, kRunKey, edm::TransitionRecordID(2U)},
+        edm::SourcePeekResult{
+            edm::SourceNextState::DataTransition, kLumiKey, edm::TransitionRecordID(edm::TransitionRecordID(2U), 1U)},
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition,
+                              kEventKey,
+                              edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(2U), 1U), 1U)},
+        //Tests that ending job triggers supporter end Lumi and Run in correct order
+        edm::SourcePeekResult{edm::SourceNextState::Stop},
+    };
+
+    unsigned int counter = 0;
+    edm::SourceCoordinator coordinator(std::make_unique<TestSource>(std::move(transitions)));
+    edm::ConcurrentTransitionScheduler runScheduler(kRunKey, 1);
+    runScheduler.addBeginAction(std::make_unique<PrintAction>("Run Begin"));
+    runScheduler.addEndAction(std::make_unique<PrintAction>("Run End"));
+    edm::ConcurrentTransitionScheduler lumiScheduler(kLumiKey, 1);
+    lumiScheduler.addBeginAction(std::make_unique<PrintAction>("Begin lumi"));
+    lumiScheduler.addSupporterBeginAction(kRunKey, std::make_unique<PrintAction>("Lumi stream Begin Run"));
+    lumiScheduler.addSupporterEndAction(kRunKey, std::make_unique<PrintAction>("Lumi stream End Run"));
+    lumiScheduler.addEndAction(std::make_unique<PrintAction>("End lumi"));
+    edm::ConcurrentTransitionScheduler eventScheduler(kEventKey, 1);
+    eventScheduler.addSupporterBeginAction(kRunKey, std::make_unique<PrintAction>("Event stream Begin Run"));
+    eventScheduler.addSupporterBeginAction(
+        kRunKey, std::make_unique<CheckTransitionOrderAction>(kRunKey, std::vector<unsigned int>{0U, 6U}, counter));
+    eventScheduler.addSupporterBeginAction(kLumiKey, std::make_unique<PrintAction>("Event stream Begin Lumi"));
+    eventScheduler.addSupporterBeginAction(
+        kLumiKey, std::make_unique<CheckTransitionOrderAction>(kLumiKey, std::vector<unsigned int>{1U, 7U}, counter));
+    eventScheduler.addBeginAction(std::make_unique<PrintAction>("Begin event"));
+    eventScheduler.addBeginAction(
+        std::make_unique<CheckTransitionOrderAction>(kEventKey, std::vector<unsigned int>{2U, 8U}, counter));
+    eventScheduler.addEndAction(std::make_unique<PrintAction>("End event"));
+    eventScheduler.addEndAction(
+        std::make_unique<CheckTransitionOrderAction>(kEventKey, std::vector<unsigned int>{3U, 9U}, counter));
+    eventScheduler.addSupporterEndAction(kLumiKey, std::make_unique<PrintAction>("Event stream End Lumi"));
+    eventScheduler.addSupporterEndAction(
+        kLumiKey, std::make_unique<CheckTransitionOrderAction>(kLumiKey, std::vector<unsigned int>{4U, 10U}, counter));
+    eventScheduler.addSupporterEndAction(kRunKey, std::make_unique<PrintAction>("Event stream End Run"));
+    eventScheduler.addSupporterEndAction(
+        kRunKey, std::make_unique<CheckTransitionOrderAction>(kRunKey, std::vector<unsigned int>{5U, 11U}, counter));
+
+    runScheduler.addDependentScheduler(lumiScheduler);
+    lumiScheduler.addDependentScheduler(eventScheduler);
+
+    edm::TransitionsDistributor distributor(coordinator);
+    distributor.addSchedulerForTransition(kRunKey, runScheduler);
+    distributor.addSchedulerForTransition(kLumiKey, lumiScheduler);
+    distributor.addSchedulerForTransition(kEventKey, eventScheduler);
+    tbb::task_arena arena(1);
+    arena.execute([&distributor]() { distributor.processData(); });
+    REQUIRE(counter == 12U);
   }
 }

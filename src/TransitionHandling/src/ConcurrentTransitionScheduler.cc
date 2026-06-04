@@ -6,33 +6,31 @@
 #include "Concurrency/chain_first.h"
 #include "Concurrency/WaitingTaskList.h"
 
+#include <map>
+
 namespace edm {
   ConcurrentTransitionScheduler::SupporterResource::~SupporterResource() {
     if (resource_ && scheduler_) {
-      //should release the supporterOfSupporterResources_ AFTER this async call.
-      // this guarantees that those endSupporterTransitionAsync calls will be made in the correct order (from most nested to least nested).
-      using namespace edm::waiting_task;
-      chain::first([scheduler = scheduler_, key = resource_->key_, recordID = resource_->recordID_](
-                       edm::WaitingTaskHolder holder) mutable {
-        scheduler->endSupporterTransitionAsync(key, recordID, holder);
-      }) |
-          chain::then([supporters = std::move(supporterOfSupporterResources_)](std::exception_ptr const* ptr,
-                                                                               edm::WaitingTaskHolder holder) mutable {
-            supporters.clear();
-            if (ptr) {
-              holder.doneWaiting(*ptr);
-            } else {
-              holder.doneWaiting(std::exception_ptr{});
-            }
-          }) |
-          chain::runLast(resource_->processEndTask_);
+      auto key = resource_->key_;
+      auto recordID = resource_->recordID_;
+      scheduler_->endSupporterTransitionAsync(key, recordID, resource_->processEndTask_);
     }
   }
 
   //Must only be called by TransitionsDistributor (as it serializes the calls to readAsync and tryToMergeAsync)
   void ConcurrentTransitionScheduler::doneProcessing() {
+    //NEED to release supports in correct order (from most nested to least nested), so have to do this one at a time and not in a loop.
+    std::map<std::size_t, edm::TransitionRecordKey, std::greater<>> orderedSupporters;
     for (auto& [_, resource] : supporterResources_) {
-      resource.reset();
+      if (resource) {
+        orderedSupporters.emplace(resource->resource_->recordID_.size(), resource->resource_->key_);
+      }
+    }
+    for (auto& [_, key] : orderedSupporters) {
+      auto it = supporterResources_.find(key);
+      if (it != supporterResources_.end()) {
+        it->second.reset();
+      }
     }
     //we want the endProcessAsync to be the next to run on this thread so has to be done last.
     transitionResource_.reset();
@@ -85,10 +83,10 @@ namespace edm {
 
   void ConcurrentTransitionScheduler::newSupporterTransitionComing(edm::TransitionRecordKey transitionKey) {
     for (auto* scheduler : dependentSchedulers_) {
+      //tell dependents we are also ending. Do this first to get the ordering right in the dependents (from most nested to least nested).
+      scheduler->newSupporterTransitionComing(transition_);
       //pass this on
       scheduler->newSupporterTransitionComing(transitionKey);
-      //plus we are resetting ourselves
-      scheduler->newSupporterTransitionComing(transition_);
     }
     auto findIt = supporterResources_.find(transitionKey);
     assert(findIt != supporterResources_.end());
@@ -107,17 +105,6 @@ namespace edm {
     auto findIt = supporterResources_.find(transitionKey);
     assert(findIt != supporterResources_.end());
     findIt->second = std::make_shared<SupporterResource>(std::move(resource));
-    findIt->second->supporterOfSupporterResources_.reserve(supporterResources_.size() - 1);
-    //Smaller record ID means higher on the hierarchy. We want to call endSupporterTransitionAsync in the order
-    // from most nested to least nested, so we need to make sure that the SupporterResource of the 
-    // direct supporter transition in the hierarchy holds the SupporterResource of 
-    // the supporter transition that is higher up in the hierarchy (if there is one).
-    for (auto it = supporterResources_.begin(); it != supporterResources_.end(); ++it) {
-      if (it->second && it->second->scheduler_ == this &&
-          it->second->resource_->recordID_.size() < findIt->second->resource_->recordID_.size()) {
-        findIt->second->supporterOfSupporterResources_.push_back(it->second);
-      }
-    }
   }
 
   void ConcurrentTransitionScheduler::announceNewTransitionAvailable(edm::ConcurrentTransitionID index,
