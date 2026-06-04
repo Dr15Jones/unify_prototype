@@ -740,6 +740,83 @@ TEST_CASE("Test schedule", "[Schedule]") {
     tbb::task_arena arena(1);
     arena.execute([&distributor]() { distributor.processData(); });
   }
+  SECTION("No Suppporter actions") {
+    std::vector<edm::SourcePeekResult> transitions{
+        edm::SourcePeekResult{edm::SourceNextState::File},
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition, kRunKey, edm::TransitionRecordID(1U)},
+        edm::SourcePeekResult{
+            edm::SourceNextState::DataTransition, kLumiKey, edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U)},
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition,
+                              kEventKey,
+                              edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U), 1U)},
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition, kRunKey, edm::TransitionRecordID(2U)},
+        edm::SourcePeekResult{
+            edm::SourceNextState::DataTransition, kLumiKey, edm::TransitionRecordID(edm::TransitionRecordID(2U), 1U)},
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition,
+                              kEventKey,
+                              edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(2U), 1U), 1U)},
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition, kRunKey, edm::TransitionRecordID(3U)},
+        edm::SourcePeekResult{edm::SourceNextState::Stop},
+    };
+    edm::SourceCoordinator coordinator(std::make_unique<TestSource>(std::move(transitions)));
+    edm::ConcurrentTransitionScheduler runScheduler(kRunKey, 1);
+    runScheduler.addBeginAction(std::make_unique<PrintAction>("Run Begin"));
+    runScheduler.addBeginAction(std::make_unique<CheckTransitionAction>(
+        kRunKey,
+        std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(1U)},
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(2U)},
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(3U)}}));
+    runScheduler.addEndAction(std::make_unique<PrintAction>("Run End"));
+    runScheduler.addEndAction(std::make_unique<CheckTransitionAction>(
+        kRunKey,
+        std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(1U)},
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(2U)},
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(3U)}}));
+
+    edm::ConcurrentTransitionScheduler lumiScheduler(kLumiKey, 1);
+    lumiScheduler.addBeginAction(std::make_unique<PrintAction>("Begin lumi"));
+    lumiScheduler.addBeginAction(std::make_unique<CheckTransitionAction>(
+        kLumiKey,
+        std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U)},
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(2U), 1U)}}));
+    lumiScheduler.addEndAction(std::make_unique<PrintAction>("End lumi"));
+    lumiScheduler.addEndAction(std::make_unique<CheckTransitionAction>(
+        kLumiKey,
+        std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U)},
+            {edm::ConcurrentTransitionID(0), edm::TransitionRecordID(edm::TransitionRecordID(2U), 1U)}}));
+
+    edm::ConcurrentTransitionScheduler eventScheduler(kEventKey, 1);
+    eventScheduler.addBeginAction(std::make_unique<PrintAction>("Begin event"));
+    eventScheduler.addBeginAction(std::make_unique<CheckTransitionAction>(
+        kEventKey,
+        std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
+            {edm::ConcurrentTransitionID(0),
+             edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U), 1U)},
+            {edm::ConcurrentTransitionID(0),
+             edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(2U), 1U), 1U)}}));
+    eventScheduler.addEndAction(std::make_unique<PrintAction>("End event"));
+    eventScheduler.addEndAction(std::make_unique<CheckTransitionAction>(
+        kEventKey,
+        std::vector<std::pair<edm::ConcurrentTransitionID, edm::TransitionRecordID>>{
+            {edm::ConcurrentTransitionID(0),
+             edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U), 1U)},
+            {edm::ConcurrentTransitionID(0),
+             edm::TransitionRecordID(edm::TransitionRecordID(edm::TransitionRecordID(2U), 1U), 1U)}}));
+
+    runScheduler.addDependentScheduler(lumiScheduler);
+    lumiScheduler.addDependentScheduler(eventScheduler);
+
+    edm::TransitionsDistributor distributor(coordinator);
+    distributor.addSchedulerForTransition(kRunKey, runScheduler);
+    distributor.addSchedulerForTransition(kLumiKey, lumiScheduler);
+    distributor.addSchedulerForTransition(kEventKey, eventScheduler);
+    tbb::task_arena arena(1);
+    arena.execute([&distributor]() { distributor.processData(); });
+            }
   SECTION("Test supporter end ordering") {
     std::vector<edm::SourcePeekResult> transitions{
         edm::SourcePeekResult{edm::SourceNextState::File},
