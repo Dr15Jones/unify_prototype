@@ -100,10 +100,13 @@ namespace edm {
                                      edm::ConcurrentTransitionsTaskQueue::Resumer resumer,
                                      edm::WaitingTaskHolder holder);
     void announceNewTransitionAvailable(edm::ConcurrentTransitionID index, edm::WaitingTaskHolder holder);
+    void announceDistributorReleased();
     void processBeginAsync(edm::ConcurrentTransitionID stream, edm::WaitingTaskHolder holder);
-    void beginSupporterTransitionAsync(edm::TransitionRecordKey, edm::WaitingTaskList&, edm::WaitingTaskHolder);
+    void pauseAndEnqueueBeginSupporterTransitionAsync(edm::TransitionRecordKey const&, edm::TransitionRecordID const& recordID, edm::WaitingTaskList&, edm::WaitingTaskHolder);
+    void resumeBeginSupporterTransitionAsync(edm::TransitionRecordKey const& transitionKey);
     void processBeginSupporterTransitionAsync(ConcurrentTransitionID stream,
                                               edm::TransitionRecordKey const&,
+                                              edm::TransitionRecordID const& recordID,
                                               edm::WaitingTaskHolder);
     void endSupporterTransitionAsync(edm::TransitionRecordKey const&,
                                      edm::TransitionRecordID const&,

@@ -67,8 +67,12 @@ namespace edm {
         chain::then([this, distributor = std::move(distributor), finalHolder = holder, pActiveStream](
                         edm::WaitingTaskHolder holder) mutable {
           //we can release the distributor and allow the beginGlobalAsync to happen concurrently.
+          //NOTE: we need to enqueue to the dependent queues BEFORE releasing the distributor.
+          // However, we want the dependent TBB tasks to be added AFTER the distributor adds its task.
           announceNewTransitionAvailable(*pActiveStream, finalHolder);
+          //this can't throw so do not need to guard next call
           distributor.release();
+          announceDistributorReleased();
           // Simulate processing the transition here
           processBeginAsync(*pActiveStream, std::move(holder));
         }) |
@@ -92,6 +96,22 @@ namespace edm {
     assert(findIt != supporterResources_.end());
     findIt->second.reset();
     transitionResource_.reset();
+  }
+  void ConcurrentTransitionScheduler::announceDistributorReleased() {
+    for (auto* scheduler : dependentSchedulers_) {
+      scheduler->resumeBeginSupporterTransitionAsync(transition_);
+    }
+  }
+  void ConcurrentTransitionScheduler::resumeBeginSupporterTransitionAsync(edm::TransitionRecordKey const& transitionKey) {
+    for (auto* scheduler : dependentSchedulers_) {
+      scheduler->resumeBeginSupporterTransitionAsync(transitionKey);
+    }
+    if (supporterBeginActions_.find(transitionKey) == supporterBeginActions_.end() &&
+        supporterEndActions_.find(transitionKey) == supporterEndActions_.end()) {
+      //we didn't pause the queue for this transition since there are no actions.
+      return;
+    }
+    queue_.resumeAll();
   }
 
   //called while TransitionsDistributor is still paused, so we don't have to worry about synchronization here.
@@ -135,16 +155,17 @@ namespace edm {
     findIt->second->scheduler_ = this;
     //copy fine here since std::shared_ptr is reference counted so destructor of SupporterResource will only be called when all copies are gone.
     auto resource = findIt->second;
-    auto beginTask =
-        edm::waiting_task::chain::first([this, transitionKey, &waitingTasks](edm::WaitingTaskHolder holder) mutable {
-          beginSupporterTransitionAsync(transitionKey, waitingTasks, std::move(holder));
-        }) |
-        edm::waiting_task::chain::then([this, resource](edm::WaitingTaskHolder holder) mutable {
-          //need to be sure that the resource is available during beginSupporterTransitionAsync, but we can release it right after
-          resource.reset();
-        }) |
-        edm::waiting_task::chain::lastTask(std::move(holder));
-    waitingTasks.add(std::move(beginTask));
+    auto recordID = resource->resource_->recordID_;
+    //chain::first actually calls it's lambda in this routine (since using runLast), which is needed so the tasks are enqueued before returning from this function.
+    // We need these enqueued while the distributor is being held to be sure all ConcurrrentTransitions agree on the order of supporter transitions and so no other
+    // transition can sneak into the queue before this one.
+    edm::waiting_task::chain::first([this, transitionKey, recordID, &waitingTasks](
+                                        edm::WaitingTaskHolder holder) mutable {
+      pauseAndEnqueueBeginSupporterTransitionAsync(transitionKey, recordID, waitingTasks, std::move(holder));
+    }) | edm::waiting_task::chain::then([this, resource](edm::WaitingTaskHolder holder) mutable {
+      //need to be sure that the resource is available during pauseAndEnqueueBeginSupporterTransitionAsync, but we can release it right after
+      resource.reset();
+    }) | edm::waiting_task::chain::runLast(std::move(holder));
   }
 
   void ConcurrentTransitionScheduler::newFileComing(std::weak_ptr<FileTransitionResource const> resource) {
@@ -210,33 +231,34 @@ namespace edm {
     //std::cout << "global begin transition " << transition_.name() << " for stream " << stream.id() << std::endl;
     holder.doneWaiting(std::exception_ptr{});
   }
-  void ConcurrentTransitionScheduler::beginSupporterTransitionAsync(edm::TransitionRecordKey key,
+  void ConcurrentTransitionScheduler::pauseAndEnqueueBeginSupporterTransitionAsync(edm::TransitionRecordKey const& key,
+                                                                    edm::TransitionRecordID const& recordID,
                                                                     edm::WaitingTaskList& waitingTasks,
                                                                     edm::WaitingTaskHolder holder) {
-    queue_.pushToAllAndPause(*holder.group(), [this, holder, key, &waitingTasks](auto iResumer, size_t index) mutable {
-      using namespace edm::waiting_task::chain;
-      auto task = first([this, index, key](edm::WaitingTaskHolder holder) mutable {
-                    processBeginSupporterTransitionAsync(edm::ConcurrentTransitionID(index), key, std::move(holder));
-                  }) |
-                  then([this, index, resumer = std::move(iResumer)](edm::WaitingTaskHolder holder) mutable {
-                    resumer.resume();
-                  }) |
-                  lastTask(std::move(holder));
-      waitingTasks.add(std::move(task));
-    });
-    // Simulate beginning the dependent transition here
-    holder.doneWaiting(std::exception_ptr{});
+    //we do a pause first so the tasks will not immediately be queued to TBB
+    queue_.pauseAll();
+    queue_.pushToAllAndPause(
+        *holder.group(), [this, holder, key, recordID, &waitingTasks](auto iResumer, size_t index) mutable {
+          using namespace edm::waiting_task::chain;
+          auto task = first([this, index, key, recordID](edm::WaitingTaskHolder holder) mutable {
+                        processBeginSupporterTransitionAsync(
+                            edm::ConcurrentTransitionID(index), key, recordID, std::move(holder));
+                      }) |
+                      then([this, index, resumer = std::move(iResumer)](edm::WaitingTaskHolder holder) mutable {
+                        resumer.resume();
+                      }) |
+                      lastTask(std::move(holder));
+          waitingTasks.add(std::move(task));
+        });
   }
   void ConcurrentTransitionScheduler::processBeginSupporterTransitionAsync(ConcurrentTransitionID stream,
                                                                            edm::TransitionRecordKey const& key,
+                                                                           edm::TransitionRecordID const& recordID,
                                                                            edm::WaitingTaskHolder holder) {
     auto it = supporterBeginActions_.find(key);
     if (it == supporterBeginActions_.end()) {
       return;
     }
-    auto itResource = supporterResources_.find(key);
-    assert(itResource != supporterResources_.end());
-    auto recordID = itResource->second->resource_->recordID_;
     for (const auto& action : it->second) {
       action->performAsync(holder, key, stream, recordID);
     }
