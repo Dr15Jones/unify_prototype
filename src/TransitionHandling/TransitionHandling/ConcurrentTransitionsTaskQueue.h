@@ -59,6 +59,16 @@ namespace edm {
 
     // ---------- member functions ---------------------------
 
+    void pauseAll() {
+      for (auto& q : m_queues) {
+        q.pause();
+      }
+    }
+    void resumeAll() {
+      for (auto& q : m_queues) {
+        q.resume();
+      }
+    }
     class Resumer {
     public:
       friend class ConcurrentTransitionsTaskQueue;
