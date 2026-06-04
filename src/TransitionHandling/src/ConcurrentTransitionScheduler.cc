@@ -7,12 +7,35 @@
 #include "Concurrency/WaitingTaskList.h"
 
 namespace edm {
+  ConcurrentTransitionScheduler::SupporterResource::~SupporterResource() {
+    if (resource_ && scheduler_) {
+      //should release the supporterOfSupporterResources_ AFTER this async call.
+      // this guarantees that those endSupporterTransitionAsync calls will be made in the correct order (from most nested to least nested).
+      using namespace edm::waiting_task;
+      chain::first([scheduler = scheduler_, key = resource_->key_, recordID = resource_->recordID_](
+                       edm::WaitingTaskHolder holder) mutable {
+        scheduler->endSupporterTransitionAsync(key, recordID, holder);
+      }) |
+          chain::then([supporters = std::move(supporterOfSupporterResources_)](std::exception_ptr const* ptr,
+                                                                               edm::WaitingTaskHolder holder) mutable {
+            supporters.clear();
+            if (ptr) {
+              holder.doneWaiting(*ptr);
+            } else {
+              holder.doneWaiting(std::exception_ptr{});
+            }
+          }) |
+          chain::runLast(resource_->processEndTask_);
+    }
+  }
+
   //Must only be called by TransitionsDistributor (as it serializes the calls to readAsync and tryToMergeAsync)
   void ConcurrentTransitionScheduler::doneProcessing() {
-    transitionResource_.reset();
     for (auto& [_, resource] : supporterResources_) {
       resource.reset();
     }
+    //we want the endProcessAsync to be the next to run on this thread so has to be done last.
+    transitionResource_.reset();
   }
   void ConcurrentTransitionScheduler::readAsync(edm::SourceCoordinator& coordinator,
                                                 edm::TransitionRecordID const& recordID,
@@ -62,7 +85,10 @@ namespace edm {
 
   void ConcurrentTransitionScheduler::newSupporterTransitionComing(edm::TransitionRecordKey transitionKey) {
     for (auto* scheduler : dependentSchedulers_) {
+      //pass this on
       scheduler->newSupporterTransitionComing(transitionKey);
+      //plus we are resetting ourselves
+      scheduler->newSupporterTransitionComing(transition_);
     }
     auto findIt = supporterResources_.find(transitionKey);
     assert(findIt != supporterResources_.end());
@@ -80,7 +106,18 @@ namespace edm {
     transitionResource_.reset();
     auto findIt = supporterResources_.find(transitionKey);
     assert(findIt != supporterResources_.end());
-    findIt->second.emplace(std::move(resource), edm::WaitingTaskHolder{});
+    findIt->second = std::make_shared<SupporterResource>(std::move(resource));
+    findIt->second->supporterOfSupporterResources_.reserve(supporterResources_.size() - 1);
+    //Smaller record ID means higher on the hierarchy. We want to call endSupporterTransitionAsync in the order
+    // from most nested to least nested, so we need to make sure that the SupporterResource of the 
+    // direct supporter transition in the hierarchy holds the SupporterResource of 
+    // the supporter transition that is higher up in the hierarchy (if there is one).
+    for (auto it = supporterResources_.begin(); it != supporterResources_.end(); ++it) {
+      if (it->second && it->second->scheduler_ == this &&
+          it->second->resource_->recordID_.size() < findIt->second->resource_->recordID_.size()) {
+        findIt->second->supporterOfSupporterResources_.push_back(it->second);
+      }
+    }
   }
 
   void ConcurrentTransitionScheduler::announceNewTransitionAvailable(edm::ConcurrentTransitionID index,
@@ -107,13 +144,9 @@ namespace edm {
     auto findIt = supporterResources_.find(transitionKey);
     assert(findIt != supporterResources_.end());
     //NOTE: the resource->processEndTask_ holds the task to run end transition, therefore the Transition data alive until it is run (even though the ConcurrentTransitionResource is destroyed).
-    auto endTask =
-        edm::waiting_task::chain::first([this, transitionKey, recordID = findIt->second->resource_->recordID_](
-                                            edm::WaitingTaskHolder holder) mutable {
-          endSupporterTransitionAsync(transitionKey, recordID, std::move(holder));
-        }) |
-        edm::waiting_task::chain::lastTask(findIt->second->resource_->processEndTask_);
-    findIt->second->endSupporterTransitionTask_ = std::move(endTask);
+    //this will cause endSupporterTransitionAsync to be called
+    findIt->second->scheduler_ = this;
+    //copy fine here since std::shared_ptr is reference counted so destructor of SupporterResource will only be called when all copies are gone.
     auto resource = findIt->second;
     auto beginTask =
         edm::waiting_task::chain::first([this, transitionKey, &waitingTasks](edm::WaitingTaskHolder holder) mutable {
@@ -176,7 +209,7 @@ namespace edm {
                   }
                 }) |
                 chain::lastTask(std::move(holder));
-    transitionResource_ = std::make_shared<ConcurrentTransitionResource>(index, recordID, std::move(task));
+    transitionResource_ = std::make_shared<ConcurrentTransitionResource>(transition_, index, recordID, std::move(task));
     for (auto* scheduler : dependentSchedulers_) {
       scheduler->newSupporterTransitionResource(transition_, transitionResource_);
     }

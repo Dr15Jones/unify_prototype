@@ -28,6 +28,7 @@ namespace edm {
   class ConcurrentTransitionResource {
   public:
     //NOTE: the replica_ and recordID_ are just stand-ins for a TransitionRecord
+    edm::TransitionRecordKey key_;
     edm::ConcurrentTransitionID replica_{0};
     edm::TransitionRecordID recordID_;
     //This task is ACTUALLY what holds particular transition around and triggers the final processEndAsync.
@@ -50,7 +51,7 @@ namespace edm {
       }
     }
     void supporterTransition(edm::TransitionRecordKey transitionKey) {
-      supporterResources_.emplace(transitionKey, std::nullopt);
+      supporterResources_.emplace(transitionKey, std::shared_ptr<SupporterResource>());
       for (auto& resource : concurrentHeldSupporterResources_) {
         resource.resize(supporterResources_.size());
       }
@@ -123,10 +124,16 @@ namespace edm {
     //Cache of the resources for the supporter transitions. Keeps those transitions open until we are no longer processing a transition which depends on them.
     //this is only modified or read while the TransitionDistributor is paused, so we don't have to worry about synchronization here.
     struct SupporterResource {
+      SupporterResource() = default;
+      SupporterResource(std::shared_ptr<ConcurrentTransitionResource const> iResource)
+          : resource_(std::move(iResource)) {}
+      ~SupporterResource();
       std::shared_ptr<ConcurrentTransitionResource const> resource_;
-      edm::WaitingTaskHolder endSupporterTransitionTask_;
+      ConcurrentTransitionScheduler* scheduler_ = nullptr;
+      std::vector<std::shared_ptr<SupporterResource const>> supporterOfSupporterResources_;
+      //need to hold SupporterResource for the supporter transitions in the hierarchy so the endSupporterTransitionAsync are called in the correct order.
     };
-    std::unordered_map<edm::TransitionRecordKey, std::optional<SupporterResource>, edm::TransitionRecordKeyHash>
+    std::unordered_map<edm::TransitionRecordKey, std::shared_ptr<SupporterResource>, edm::TransitionRecordKeyHash>
         supporterResources_;
     //used to keep the file resource alive only until the transition has finished its begin process.
     std::weak_ptr<FileTransitionResource const> fileTransitionResource_;
