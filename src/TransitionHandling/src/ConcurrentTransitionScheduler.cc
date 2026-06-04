@@ -150,22 +150,16 @@ namespace edm {
 
     auto findIt = supporterResources_.find(transitionKey);
     assert(findIt != supporterResources_.end());
-    //NOTE: the resource->processEndTask_ holds the task to run end transition, therefore the Transition data alive until it is run (even though the ConcurrentTransitionResource is destroyed).
-    //this will cause endSupporterTransitionAsync to be called
-    findIt->second->scheduler_ = this;
     //copy fine here since std::shared_ptr is reference counted so destructor of SupporterResource will only be called when all copies are gone.
     auto resource = findIt->second;
+    assert(resource);
+    //NOTE: the resource->processEndTask_ holds the task to run end transition, therefore the Transition data alive until it is run (even though the ConcurrentTransitionResource is destroyed).
+    //this will cause endSupporterTransitionAsync to be called
+    resource->scheduler_ = this;
     auto recordID = resource->resource_->recordID_;
-    //chain::first actually calls it's lambda in this routine (since using runLast), which is needed so the tasks are enqueued before returning from this function.
     // We need these enqueued while the distributor is being held to be sure all ConcurrrentTransitions agree on the order of supporter transitions and so no other
     // transition can sneak into the queue before this one.
-    edm::waiting_task::chain::first([this, transitionKey, recordID, &waitingTasks](
-                                        edm::WaitingTaskHolder holder) mutable {
-      pauseAndEnqueueBeginSupporterTransitionAsync(transitionKey, recordID, waitingTasks, std::move(holder));
-    }) | edm::waiting_task::chain::then([this, resource](edm::WaitingTaskHolder holder) mutable {
-      //need to be sure that the resource is available during pauseAndEnqueueBeginSupporterTransitionAsync, but we can release it right after
-      resource.reset();
-    }) | edm::waiting_task::chain::runLast(std::move(holder));
+    pauseAndEnqueueBeginSupporterTransitionAsync(transitionKey, recordID, waitingTasks, std::move(holder));
   }
 
   void ConcurrentTransitionScheduler::newFileComing(std::weak_ptr<FileTransitionResource const> resource) {
