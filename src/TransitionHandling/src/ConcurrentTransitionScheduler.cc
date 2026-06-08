@@ -57,15 +57,34 @@ namespace edm {
           [this, &coordinator, recordID, pActiveStream, holder = std::move(holder), lastTask = std::move(lastTask)](
               auto iResumer, size_t index) mutable {
             edm::ConcurrentTransitionID streamID(index);
-            concurrentRecords_[index] = recordID;
             *pActiveStream = streamID;
+
+            if (*failureDuringProcessing_) {
+              try {
+                throw std::runtime_error("Aborting readAsync due to previous failure");
+              } catch (...) {
+                holder.doneWaiting(std::current_exception());
+              }
+              return;
+            }
+            concurrentRecords_[index] = recordID;
             announceNewTransitionComing(streamID, recordID, std::move(iResumer), std::move(lastTask));
             holdResources(streamID);
+            beginTransitionRan_[streamID.id()] = 0;
+
             coordinator.readTransitionAsync(transition_, streamID, std::move(holder));
           });
     }) |
         chain::then([this, distributor = std::move(distributor), finalHolder = holder, pActiveStream](
-                        edm::WaitingTaskHolder holder) mutable {
+                        std::exception_ptr const* ptr, edm::WaitingTaskHolder holder) mutable {
+          if (ptr or *failureDuringProcessing_) {
+            failureDuringProcessing_->store(true);
+            distributor.release();
+            if (ptr) {
+              holder.doneWaiting(*ptr);
+            }
+            return;
+          }
           //we can release the distributor and allow the beginGlobalAsync to happen concurrently.
           //NOTE: we need to enqueue to the dependent queues BEFORE releasing the distributor.
           // However, we want the dependent TBB tasks to be added AFTER the distributor adds its task.
@@ -74,13 +93,20 @@ namespace edm {
           distributor.release();
           announceDistributorReleased();
           // Simulate processing the transition here
+          beginTransitionRan_[pActiveStream->id()] = 1;
           processBeginAsync(*pActiveStream, std::move(holder));
         }) |
         chain::then([this, fileResource = std::move(fileResource), stream = std::move(activeStream)](
-                        edm::WaitingTaskHolder holder) mutable {
+                        std::exception_ptr const* ptr, edm::WaitingTaskHolder holder) mutable {
+          std::exception_ptr localPtr;
+          if (ptr) {
+            localPtr = *ptr;
+            failureDuringProcessing_->store(true);
+          }
+
           // tell any waiting dependent transitions that the record is now available
-          waitingDependentTransitionTasks_[stream->id()].doneWaiting(std::exception_ptr{});
-          holder.doneWaiting(std::exception_ptr{});
+          waitingDependentTransitionTasks_[stream->id()].doneWaiting(localPtr);
+          holder.doneWaiting(localPtr);
         }) |
         chain::runLast(std::move(holder));
   }
@@ -102,7 +128,8 @@ namespace edm {
       scheduler->resumeBeginSupporterTransitionAsync(transition_);
     }
   }
-  void ConcurrentTransitionScheduler::resumeBeginSupporterTransitionAsync(edm::TransitionRecordKey const& transitionKey) {
+  void ConcurrentTransitionScheduler::resumeBeginSupporterTransitionAsync(
+      edm::TransitionRecordKey const& transitionKey) {
     for (auto* scheduler : dependentSchedulers_) {
       scheduler->resumeBeginSupporterTransitionAsync(transitionKey);
     }
@@ -198,13 +225,16 @@ namespace edm {
     using namespace edm::waiting_task;
     waitingDependentTransitionTasks_[index.id()].reset();
     auto task = chain::first([this, index](edm::WaitingTaskHolder holder) mutable {
-                  processEndAsync(index, std::move(holder));
+                  if (beginTransitionRan_[index.id()] == 1) {
+                    processEndAsync(index, std::move(holder));
+                  }
                 }) |
                 chain::then([this, index, resumer = std::move(resumer)](std::exception_ptr const* ptr,
                                                                         edm::WaitingTaskHolder holder) mutable {
                   releaseResources(index);
                   resumer.resume();
                   if (ptr) {
+                    failureDuringProcessing_->store(true);
                     holder.doneWaiting(*ptr);
                   } else {
                     holder.doneWaiting(std::exception_ptr{});
@@ -225,21 +255,30 @@ namespace edm {
     //std::cout << "global begin transition " << transition_.name() << " for stream " << stream.id() << std::endl;
     holder.doneWaiting(std::exception_ptr{});
   }
-  void ConcurrentTransitionScheduler::pauseAndEnqueueBeginSupporterTransitionAsync(edm::TransitionRecordKey const& key,
-                                                                    edm::TransitionRecordID const& recordID,
-                                                                    edm::WaitingTaskList& waitingTasks,
-                                                                    edm::WaitingTaskHolder holder) {
+  void ConcurrentTransitionScheduler::pauseAndEnqueueBeginSupporterTransitionAsync(
+      edm::TransitionRecordKey const& key,
+      edm::TransitionRecordID const& recordID,
+      edm::WaitingTaskList& waitingTasks,
+      edm::WaitingTaskHolder holder) {
     //we do a pause first so the tasks will not immediately be queued to TBB
     queue_.pauseAll();
     queue_.pushToAllAndPause(
         *holder.group(), [this, holder, key, recordID, &waitingTasks](auto iResumer, size_t index) mutable {
           using namespace edm::waiting_task::chain;
+          beginSupporterTransitionRan_[index][key] = false;
           auto task = first([this, index, key, recordID](edm::WaitingTaskHolder holder) mutable {
                         processBeginSupporterTransitionAsync(
                             edm::ConcurrentTransitionID(index), key, recordID, std::move(holder));
                       }) |
-                      then([this, index, resumer = std::move(iResumer)](edm::WaitingTaskHolder holder) mutable {
+                      then([this, index, resumer = std::move(iResumer)](std::exception_ptr const* ptr,
+                                                                        edm::WaitingTaskHolder holder) mutable {
                         resumer.resume();
+                        if (ptr) {
+                          failureDuringProcessing_->store(true);
+                          holder.doneWaiting(*ptr);
+                        } else {
+                          holder.doneWaiting(std::exception_ptr{});
+                        }
                       }) |
                       lastTask(std::move(holder));
           waitingTasks.add(std::move(task));
@@ -253,6 +292,7 @@ namespace edm {
     if (it == supporterBeginActions_.end()) {
       return;
     }
+    beginSupporterTransitionRan_[stream.id()][key] = true;
     for (const auto& action : it->second) {
       action->performAsync(holder, key, stream, recordID);
     }
@@ -290,6 +330,10 @@ namespace edm {
                                                                          edm::WaitingTaskHolder holder) {
     auto it = supporterEndActions_.find(key);
     if (it == supporterEndActions_.end()) {
+      return;
+    }
+    if (!beginSupporterTransitionRan_[stream.id()][key]) {
+      //if the begin transition didn't run then we shouldn't run the end transition
       return;
     }
     for (const auto& action : it->second) {

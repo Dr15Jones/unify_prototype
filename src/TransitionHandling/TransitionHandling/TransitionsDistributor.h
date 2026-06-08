@@ -21,10 +21,7 @@ namespace edm {
     friend class TransitionsDistributorGuard;
 
     TransitionsDistributor(edm::SourceCoordinator& coordinator) : coordinator_(coordinator) {}
-    void addSchedulerForTransition(edm::TransitionRecordKey transitionKey, ConcurrentTransitionScheduler& scheduler) {
-      filesProcessor_.addDependentScheduler(scheduler);
-      schedulers_.emplace(transitionKey, &scheduler);
-    }
+    void addSchedulerForTransition(edm::TransitionRecordKey transitionKey, ConcurrentTransitionScheduler& scheduler);
 
     void processData();
 
@@ -39,6 +36,7 @@ namespace edm {
     std::optional<edm::SourcePeekResult> nextTransition_;
     std::unordered_map<edm::TransitionRecordKey, ConcurrentTransitionScheduler*, edm::TransitionRecordKeyHash> schedulers_;
     std::atomic<bool> failureDuringRead_{false};
+    std::atomic<bool> failureDuringProcessing_{false};
   };
 }  // namespace edm
 

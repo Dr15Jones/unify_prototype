@@ -41,8 +41,10 @@ namespace edm {
         : transition_(transitionKey),
           queue_(iNQueues),
           waitingDependentTransitionTasks_(iNQueues),
+          beginTransitionRan_(iNQueues, char8_t{0}),
           concurrentRecords_(iNQueues),
-          concurrentHeldSupporterResources_(iNQueues) {}
+          concurrentHeldSupporterResources_(iNQueues),
+          beginSupporterTransitionRan_(iNQueues) {}
     void addDependentScheduler(ConcurrentTransitionScheduler& scheduler) {
       dependentSchedulers_.push_back(&scheduler);
       scheduler.supporterTransition(transition_);
@@ -54,6 +56,9 @@ namespace edm {
       supporterResources_.emplace(transitionKey, std::shared_ptr<SupporterResource>());
       for (auto& resource : concurrentHeldSupporterResources_) {
         resource.resize(supporterResources_.size());
+      }
+      for (auto& supporters : beginSupporterTransitionRan_) {
+        supporters[transitionKey] = false;
       }
       for (auto* scheduler : dependentSchedulers_) {
         scheduler->supporterTransition(transitionKey);
@@ -69,6 +74,7 @@ namespace edm {
       supporterEndActions_[key].push_back(std::move(action));
     }
 
+    void setFailureDuringProcessing(std::atomic<bool>* failureFlag) { failureDuringProcessing_ = failureFlag; }
     //Must only be called by TransitionsDistributor (as it serializes the calls to readAsync and tryToMergeAsync)
     void doneProcessing();
     void readAsync(edm::SourceCoordinator& coordinator,
@@ -102,7 +108,10 @@ namespace edm {
     void announceNewTransitionAvailable(edm::ConcurrentTransitionID index, edm::WaitingTaskHolder holder);
     void announceDistributorReleased();
     void processBeginAsync(edm::ConcurrentTransitionID stream, edm::WaitingTaskHolder holder);
-    void pauseAndEnqueueBeginSupporterTransitionAsync(edm::TransitionRecordKey const&, edm::TransitionRecordID const& recordID, edm::WaitingTaskList&, edm::WaitingTaskHolder);
+    void pauseAndEnqueueBeginSupporterTransitionAsync(edm::TransitionRecordKey const&,
+                                                      edm::TransitionRecordID const& recordID,
+                                                      edm::WaitingTaskList&,
+                                                      edm::WaitingTaskHolder);
     void resumeBeginSupporterTransitionAsync(edm::TransitionRecordKey const& transitionKey);
     void processBeginSupporterTransitionAsync(ConcurrentTransitionID stream,
                                               edm::TransitionRecordKey const&,
@@ -141,9 +150,13 @@ namespace edm {
     //For each stream (index) holds the waiting tasks for the dependent transitions. The tasks are informed once the transition record is available and can then run the dependent transitions when they are scheduled to run.
     std::vector<edm::WaitingTaskList> waitingDependentTransitionTasks_;
     std::vector<edm::TransitionRecordID> concurrentRecords_;
+    //use char not bool so have separately addressable memory for different threads to read/write.
+    std::vector<char8_t> beginTransitionRan_;
     //For each stream (first index) and each data dependent transition (second index) holds the resource for that transition while the stream is processing it. This allows us to release all resources for a stream at once when it finishes processing the transition.
     // The endSupporterTranstionTask_ resource does NOT need to be held here since if it goes off it will add an entry to the queue.
     std::vector<std::vector<std::shared_ptr<ConcurrentTransitionResource const>>> concurrentHeldSupporterResources_;
+    std::vector<std::unordered_map<edm::TransitionRecordKey, bool, edm::TransitionRecordKeyHash>>
+        beginSupporterTransitionRan_;
     std::vector<std::unique_ptr<AsyncActionBase>> beginActions_;
     std::vector<std::unique_ptr<AsyncActionBase>> endActions_;
     std::unordered_map<edm::TransitionRecordKey,
@@ -154,6 +167,8 @@ namespace edm {
                        std::vector<std::unique_ptr<AsyncActionBase>>,
                        edm::TransitionRecordKeyHash>
         supporterEndActions_;
+
+    std::atomic<bool>* failureDuringProcessing_ = nullptr;
   };
 
 }  // namespace edm

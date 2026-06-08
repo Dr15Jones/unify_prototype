@@ -5,6 +5,14 @@
 #include "Concurrency/FinalWaitingTask.h"
 
 namespace edm {
+
+  void TransitionsDistributor::addSchedulerForTransition(edm::TransitionRecordKey transitionKey,
+                                                         ConcurrentTransitionScheduler& scheduler) {
+    filesProcessor_.addDependentScheduler(scheduler);
+    scheduler.setFailureDuringProcessing(&failureDuringProcessing_);
+    schedulers_.emplace(transitionKey, &scheduler);
+  }
+
   //peeks at the source and then sends the transition to the proper StreamScheduler
 
   void TransitionsDistributor::processData() {
@@ -18,8 +26,12 @@ namespace edm {
   void TransitionsDistributor::distributeNextTransitionAsync(edm::WaitingTaskHolder holder) {
     using namespace edm::waiting_task;
     chain::first([this](edm::WaitingTaskHolder holder) {
+      if (failureDuringRead_ or failureDuringProcessing_) {
+        holder.doneWaiting(std::exception_ptr{});
+        return;
+      }
       coordinator_.peekNextTransitionAsync(nextTransition_, std::move(holder));
-    }) | chain::then([this, finalTask = holder](edm::WaitingTaskHolder holder) {
+    }) | chain::then([this, finalTask = holder](std::exception_ptr const* ptr, edm::WaitingTaskHolder holder) {
       /*if (nextTransition_) {
         std::string recordKeyStr = nextTransition_->recordKey() ? nextTransition_->recordKey()->name() : "";
         //std::cout << " New transition peeked: " << static_cast<int>(nextTransition_->state()) <<" " << recordKeyStr << std::endl;
@@ -28,13 +40,18 @@ namespace edm {
       }
         */
 
-      if (!nextTransition_ || nextTransition_.value().state() == edm::SourceNextState::Stop) {
+      if (ptr or failureDuringRead_ or failureDuringProcessing_ or (not nextTransition_.has_value()) or
+          nextTransition_.value().state() == edm::SourceNextState::Stop) {
         // No more transitions to process, just finish
         filesProcessor_.doneProcessing();
         for (auto& [_, scheduler] : schedulers_) {
           scheduler->doneProcessing();
         }
-        holder.doneWaiting(std::exception_ptr{});
+        if(ptr) {
+          holder.doneWaiting(*ptr);
+        } else {
+          holder.doneWaiting(std::exception_ptr{});
+        }
         return;
       }
       if (nextTransition_.value().state() == edm::SourceNextState::File) {
@@ -43,11 +60,17 @@ namespace edm {
           filesProcessor_.processFileTransitionAsync(coordinator_, finalTask, std::move(holder));
         }) | chain::then([this](edm::WaitingTaskHolder holder) mutable {
           tryToMergeAfterNewFileAsync(std::nullopt, std::move(holder));
-        }) | chain::then([this, finalTask](edm::WaitingTaskHolder holder) mutable {
+        }) | chain::then([this, finalTask](std::exception_ptr const* ptr, edm::WaitingTaskHolder holder) mutable {
+          if (ptr) {
+            failureDuringRead_ = true;
+            auto tmp = finalTask;
+            tmp.doneWaiting(*ptr);
+          }
           distributeNextTransitionAsync(std::move(finalTask));
         }) | chain::runLast(std::move(holder));
         return;
       }
+      assert(nextTransition_.has_value());
       assert(nextTransition_.value().recordKey());
       auto scheduler = schedulers_.find(*nextTransition_.value().recordKey());
       assert(scheduler != schedulers_.end());

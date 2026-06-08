@@ -5,7 +5,7 @@ namespace edm {
   TransitionsDistributorGuard::~TransitionsDistributorGuard() noexcept {
     if (distributor_) {
       distributor_->failedDuringRead();
-      //do I want to trigger the next transition here if there was a failure?
+      distributor_->distributeNextTransitionAsync(std::move(holder_));
     }
   }
   void TransitionsDistributorGuard::release() noexcept {
