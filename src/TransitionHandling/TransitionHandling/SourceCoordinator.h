@@ -4,7 +4,7 @@
 #include "TransitionHandling/SourceBase.h"
 #include "TransitionHandling/SourcePeekResult.h"
 #include "TransitionHandling/ConcurrentTransitionID.h"
-#include "TransitionHandling/TransitionRecordID.h"
+#include "DataModel/TransitionRecordID.h"
 #include "Concurrency/SerialTaskQueue.h"
 #include "Concurrency/WaitingTaskHolder.h"
 

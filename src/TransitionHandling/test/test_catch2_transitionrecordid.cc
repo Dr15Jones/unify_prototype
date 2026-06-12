@@ -1,5 +1,5 @@
 #include <catch2/catch_all.hpp>
-#include "TransitionHandling/TransitionRecordID.h"
+#include "DataModel/TransitionRecordID.h"
 
 TEST_CASE("TransitionRecordID can be constructed and compared") {
   SECTION("default constructed") {

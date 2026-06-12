@@ -3,10 +3,10 @@
 
 #include "DataModel/TransitionRecordKey.h"
 #include "DataModel/TransitionRecordKeyHash.h"
+#include "DataModel/TransitionRecordID.h"
 #include "TransitionHandling/SourceCoordinator.h"
 #include "TransitionHandling/SourcePeekResult.h"
 #include "TransitionHandling/FilesProcessor.h"
-#include "TransitionHandling/TransitionRecordID.h"
 #include "Concurrency/WaitingTaskHolder.h"
 
 #include <optional>

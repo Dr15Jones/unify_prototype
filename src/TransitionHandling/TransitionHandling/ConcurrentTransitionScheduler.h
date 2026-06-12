@@ -9,7 +9,7 @@
 #include "DataModel/TransitionRecordKey.h"
 #include "DataModel/TransitionRecordKeyHash.h"
 #include "TransitionHandling/ConcurrentTransitionsTaskQueue.h"
-#include "TransitionHandling/TransitionRecordID.h"
+#include "DataModel/TransitionRecordID.h"
 #include "TransitionHandling/ConcurrentTransitionID.h"
 #include "TransitionHandling/AsyncActionBase.h"
 

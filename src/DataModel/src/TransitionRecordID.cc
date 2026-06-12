@@ -1,4 +1,4 @@
-#include "TransitionHandling/TransitionRecordID.h"
+#include "DataModel/TransitionRecordID.h"
 
 namespace edm {
   std::strong_ordering TransitionRecordID::operator<=>(const TransitionRecordID& iRHS) const noexcept {

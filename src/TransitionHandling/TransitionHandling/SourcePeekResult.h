@@ -6,7 +6,7 @@ Class to represent the result of peeking the next transition from the source. Th
 #include <optional>
 #include "TransitionHandling/SourceNextState.h"
 #include "DataModel/TransitionRecordKey.h"
-#include "TransitionHandling/TransitionRecordID.h"
+#include "DataModel/TransitionRecordID.h"
 
 namespace edm {
   class SourcePeekResult {

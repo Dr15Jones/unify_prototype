@@ -21,7 +21,7 @@
 #include "TransitionHandling/ConcurrentTransitionScheduler.h"
 #include "TransitionHandling/SourceBase.h"
 #include "TransitionHandling/SourceCoordinator.h"
-#include "TransitionHandling/TransitionRecordID.h"
+#include "DataModel/TransitionRecordID.h"
 #include "TransitionHandling/TransitionsDistributor.h"
 
 namespace {

@@ -12,7 +12,7 @@
 #include "Concurrency/chain_first.h"
 #include "DataModel/TransitionRecordKey.h"
 #include "DataModel/TransitionRecordKeyHash.h"
-#include "TransitionHandling/TransitionRecordID.h"
+#include "DataModel/TransitionRecordID.h"
 #include "TransitionHandling/ConcurrentTransitionID.h"
 #include "TransitionHandling/SourceBase.h"
 #include "TransitionHandling/SourceCoordinator.h"
