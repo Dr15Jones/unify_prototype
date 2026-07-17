@@ -77,10 +77,17 @@ namespace edm {
     void setFailureDuringProcessing(std::atomic<bool>* failureFlag) { failureDuringProcessing_ = failureFlag; }
     //Must only be called by TransitionsDistributor (as it serializes the calls to readAsync and tryToMergeAsync)
     void doneProcessing();
+
     void readAsync(edm::SourceCoordinator& coordinator,
                    edm::TransitionRecordID const& recordID,
-                   TransitionsDistributorGuard&& distributor,
-                   edm::WaitingTaskHolder holder);
+                   ConcurrentTransitionID& oTransitionID,
+                   edm::WaitingTaskHolder lastTask,
+                   edm::WaitingTaskHolder nextTask);
+
+    //Must only be called by TransitionsDistributor (as it serializes the calls to readAsync and tryToMergeAsync)
+    void processAsync(TransitionsDistributorGuard&& distributor,
+                      std::unique_ptr<edm::ConcurrentTransitionID> activeStream,
+                      edm::WaitingTaskHolder holder);
 
     //called while TransitionsDistributor is still paused, so we don't have to worry about synchronization here.
     void newSupporterTransitionComing(edm::TransitionRecordKey transitionKey);

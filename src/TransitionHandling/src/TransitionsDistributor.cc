@@ -47,7 +47,7 @@ namespace edm {
         for (auto& [_, scheduler] : schedulers_) {
           scheduler->doneProcessing();
         }
-        if(ptr) {
+        if (ptr) {
           holder.doneWaiting(*ptr);
         } else {
           holder.doneWaiting(std::exception_ptr{});
@@ -70,14 +70,30 @@ namespace edm {
         }) | chain::runLast(std::move(holder));
         return;
       }
+      //need to be sure guard destructor is called, even if readAsync fails and processAsyc is never called.
+      TransitionsDistributorGuard guard(*this, std::move(finalTask));
       assert(nextTransition_.has_value());
       assert(nextTransition_.value().recordKey());
       auto scheduler = schedulers_.find(*nextTransition_.value().recordKey());
       assert(scheduler != schedulers_.end());
-      scheduler->second->readAsync(coordinator_,
-                                   nextTransition_.value().recordID().value(),
-                                   TransitionsDistributorGuard(*this, std::move(finalTask)),
-                                   std::move(holder));
+      std::unique_ptr<edm::ConcurrentTransitionID> activeStream =
+          std::make_unique<edm::ConcurrentTransitionID>(std::numeric_limits<std::size_t>::max());
+      auto* pActiveStream = activeStream.get();
+      auto recordID = nextTransition_.value().recordID().value();
+      chain::first([recordID, this, pActiveStream, lastTask = finalTask, scheduler](
+                       edm::WaitingTaskHolder holder) mutable {
+        //Setup Conditions here?
+
+        scheduler->second->readAsync(coordinator_, recordID, *pActiveStream, std::move(lastTask), std::move(holder));
+      }) |
+          chain::then([this,
+                       scheduler,
+                       activeStream = std::move(activeStream),
+                       finalTask = std::move(finalTask),
+                       guard = std::move(guard)](edm::WaitingTaskHolder holder) mutable {
+            scheduler->second->processAsync(std::move(guard), std::move(activeStream), std::move(holder));
+          }) |
+          chain::runLast(std::move(holder));
     }) | chain::runLast(std::move(holder));
   }
 

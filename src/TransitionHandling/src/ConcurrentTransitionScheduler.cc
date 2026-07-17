@@ -37,9 +37,9 @@ namespace edm {
   }
   void ConcurrentTransitionScheduler::readAsync(edm::SourceCoordinator& coordinator,
                                                 edm::TransitionRecordID const& recordID,
-                                                TransitionsDistributorGuard&& distributor,
-                                                edm::WaitingTaskHolder holder) {
-    using namespace edm::waiting_task;
+                                                edm::ConcurrentTransitionID& oTransitionID,
+                                                edm::WaitingTaskHolder lastTask,
+                                                edm::WaitingTaskHolder nextTask) {
     transitionResource_.reset();
     for (auto* scheduler : dependentSchedulers_) {
       scheduler->newSupporterTransitionComing(transition_);
@@ -47,55 +47,64 @@ namespace edm {
 
     std::shared_ptr<FileTransitionResource const> fileResource = fileTransitionResource_.lock();
     assert(fileResource);
-    std::unique_ptr<edm::ConcurrentTransitionID> activeStream =
-        std::make_unique<edm::ConcurrentTransitionID>(std::numeric_limits<std::size_t>::max());
+    queue_.pushAndPause(*nextTask.group(),
+                        [this,
+                         &coordinator,
+                         recordID,
+                         fileResource,
+                         &oTransitionID,
+                         holder = std::move(nextTask),
+                         lastTask = std::move(lastTask)](auto iResumer, size_t index) mutable {
+                          edm::ConcurrentTransitionID streamID(index);
+                          oTransitionID = streamID;
+
+                          if (*failureDuringProcessing_) {
+                            try {
+                              throw std::runtime_error("Aborting readAsync due to previous failure");
+                            } catch (...) {
+                              holder.doneWaiting(std::current_exception());
+                            }
+                            return;
+                          }
+                          concurrentRecords_[index] = recordID;
+                          announceNewTransitionComing(streamID, recordID, std::move(iResumer), std::move(lastTask));
+                          holdResources(streamID);
+                          beginTransitionRan_[streamID.id()] = 0;
+
+                          coordinator.readTransitionAsync(transition_, streamID, std::move(holder));
+                        });
+  }
+
+  void ConcurrentTransitionScheduler::processAsync(TransitionsDistributorGuard&& distributor,
+                                                   std::unique_ptr<edm::ConcurrentTransitionID> activeStream,
+                                                   edm::WaitingTaskHolder holder) {
+    using namespace edm::waiting_task;
+
+    std::shared_ptr<FileTransitionResource const> fileResource = fileTransitionResource_.lock();
     auto* pActiveStream = activeStream.get();
-    chain::first([&coordinator, recordID, this, pActiveStream, lastTask = distributor.finalTask()](
-                     edm::WaitingTaskHolder holder) mutable {
-      queue_.pushAndPause(
-          *holder.group(),
-          [this, &coordinator, recordID, pActiveStream, holder = std::move(holder), lastTask = std::move(lastTask)](
-              auto iResumer, size_t index) mutable {
-            edm::ConcurrentTransitionID streamID(index);
-            *pActiveStream = streamID;
 
-            if (*failureDuringProcessing_) {
-              try {
-                throw std::runtime_error("Aborting readAsync due to previous failure");
-              } catch (...) {
-                holder.doneWaiting(std::current_exception());
-              }
-              return;
-            }
-            concurrentRecords_[index] = recordID;
-            announceNewTransitionComing(streamID, recordID, std::move(iResumer), std::move(lastTask));
-            holdResources(streamID);
-            beginTransitionRan_[streamID.id()] = 0;
-
-            coordinator.readTransitionAsync(transition_, streamID, std::move(holder));
-          });
+    //Need to wait till conditions are ready before we can start the beginTransitionAsync since it may need to read conditions.
+    chain::first([this, distributor = std::move(distributor), finalHolder = holder, pActiveStream](
+                     std::exception_ptr const* ptr, edm::WaitingTaskHolder holder) mutable {
+      if (ptr or *failureDuringProcessing_) {
+        failureDuringProcessing_->store(true);
+        distributor.release();
+        if (ptr) {
+          holder.doneWaiting(*ptr);
+        }
+        return;
+      }
+      //we can release the distributor and allow the beginGlobalAsync to happen concurrently.
+      //NOTE: we need to enqueue to the dependent queues BEFORE releasing the distributor.
+      // However, we want the dependent TBB tasks to be added AFTER the distributor adds its task.
+      announceNewTransitionAvailable(*pActiveStream, finalHolder);
+      //this can't throw so do not need to guard next call
+      distributor.release();
+      announceDistributorReleased();
+      // Simulate processing the transition here
+      beginTransitionRan_[pActiveStream->id()] = 1;
+      processBeginAsync(*pActiveStream, std::move(holder));
     }) |
-        chain::then([this, distributor = std::move(distributor), finalHolder = holder, pActiveStream](
-                        std::exception_ptr const* ptr, edm::WaitingTaskHolder holder) mutable {
-          if (ptr or *failureDuringProcessing_) {
-            failureDuringProcessing_->store(true);
-            distributor.release();
-            if (ptr) {
-              holder.doneWaiting(*ptr);
-            }
-            return;
-          }
-          //we can release the distributor and allow the beginGlobalAsync to happen concurrently.
-          //NOTE: we need to enqueue to the dependent queues BEFORE releasing the distributor.
-          // However, we want the dependent TBB tasks to be added AFTER the distributor adds its task.
-          announceNewTransitionAvailable(*pActiveStream, finalHolder);
-          //this can't throw so do not need to guard next call
-          distributor.release();
-          announceDistributorReleased();
-          // Simulate processing the transition here
-          beginTransitionRan_[pActiveStream->id()] = 1;
-          processBeginAsync(*pActiveStream, std::move(holder));
-        }) |
         chain::then([this, fileResource = std::move(fileResource), stream = std::move(activeStream)](
                         std::exception_ptr const* ptr, edm::WaitingTaskHolder holder) mutable {
           std::exception_ptr localPtr;
