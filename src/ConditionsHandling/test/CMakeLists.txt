@@ -1,0 +1,9 @@
+add_executable(TestConditionsHandling
+	test_catch2_contextdistributor.cc
+	test_catch2_validityinterval.cc
+)
+target_link_libraries(TestConditionsHandling PUBLIC ConditionsDataModel ConditionsHandling Catch2::Catch2WithMain)
+
+include(CTest)
+include(Catch)
+catch_discover_tests(TestConditionsHandling)
