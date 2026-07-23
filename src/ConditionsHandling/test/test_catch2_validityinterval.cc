@@ -81,6 +81,16 @@ namespace {
       REQUIRE(interval.validFor(runID4) == false);
     }
 
+    SECTION("validFor with too small interval") {
+      auto runID1 = edm::TransitionRecordID(1U);
+      auto lumiID1 = edm::TransitionRecordID(runID1, 1U);
+      auto lumiID2 = edm::TransitionRecordID(runID1, 2U);
+      edm::ValidityInterval interval(runID1, lumiID2);
+      REQUIRE(interval.validFor(runID1) == false);
+      REQUIRE(interval.validFor(lumiID1) == true);
+      REQUIRE(interval.validFor(lumiID2) == false);
+    }
+
     SECTION("validFor with open-ended interval") {
       auto runID1 = edm::TransitionRecordID(1U);
       edm::ValidityInterval interval(runID1, edm::TransitionRecordID());

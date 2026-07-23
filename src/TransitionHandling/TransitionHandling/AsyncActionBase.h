@@ -23,7 +23,7 @@ namespace edm {
                               edm::TransitionRecordID const&) = 0;
     /*
     //Both TransitionContext and SchedulingResults have lifetimes longer than the asynchronous operation.
-    virtual void performAsync(WaitingTaskHolder, TransitionContext&, SchedulingResults&) = 0;
+    virtual void performAsync(WaitingTaskHolder, edm::TransitionRecordKey const&, edm::ConcurrentTransitionID, TransitionContext&, SchedulingResults&) = 0;
     */
   };
 }  // namespace edm

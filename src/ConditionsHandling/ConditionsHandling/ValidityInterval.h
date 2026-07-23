@@ -24,17 +24,13 @@ namespace edm {
         //special case for infinite end intervals
         return recordID >= begin_;
       }
-      return recordID >= begin_ && recordID < end_;
+      return recordID >= begin_ && recordID < end_ and recordID.next() <= end_;
     }
     TransitionRecordID const& begin() const { return begin_; }
     TransitionRecordID const& end() const { return end_; }
 
-    bool operator==(const ValidityInterval& other) const {
-        return other.begin_ == begin_ && other.end_ == end_;
-    }
-    bool operator!=(const ValidityInterval& other) const {
-        return !(*this == other);
-    }
+    bool operator==(const ValidityInterval& other) const { return other.begin_ == begin_ && other.end_ == end_; }
+    bool operator!=(const ValidityInterval& other) const { return !(*this == other); }
 
   private:
     TransitionRecordID begin_;
@@ -42,8 +38,8 @@ namespace edm {
   };
 
   inline std::ostream& operator<<(std::ostream& os, ValidityInterval const& interval) {
-      os << "ValidityInterval [ " << interval.begin() << ", end=" << interval.end() <<" ]";
-      return os;
+    os << "ValidityInterval [ " << interval.begin() << ", end=" << interval.end() << " ]";
+    return os;
   }
 }  // namespace edm
 #endif  // ConditionsHandling_ValidityInterval_h
