@@ -21,11 +21,12 @@ namespace edm {
         return false;
       }
       if (end_.size() == 0) {
-        //special case for infinite end intervals
+        //special case for open-ended end intervals
         return recordID >= begin_;
       }
       return recordID >= begin_ && recordID < end_ and recordID.next() <= end_;
     }
+
     TransitionRecordID const& begin() const { return begin_; }
     TransitionRecordID const& end() const { return end_; }
 
