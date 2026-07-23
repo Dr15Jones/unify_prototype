@@ -77,4 +77,35 @@ TEST_CASE("TransitionRecordID can be constructed and compared") {
     id5 = std::move(id4);
     REQUIRE(id5 == id2);
   }
+  SECTION("next() method") {
+    edm::TransitionRecordID id1(1U);
+    auto next1 = id1.next();
+    REQUIRE(next1 == edm::TransitionRecordID(2U));
+    REQUIRE(id1 == edm::TransitionRecordID(1U));
+
+    edm::TransitionRecordID id2(0xFFFFFFFFULL);
+    auto next2 = id2.next();
+    REQUIRE(next2 == edm::TransitionRecordID(0x100000000ULL));
+
+    edm::TransitionRecordID id3(1U);
+    edm::TransitionRecordID id3_child(id3, 2U);
+    auto next3 = id3_child.next();
+    REQUIRE(next3 == edm::TransitionRecordID(id3, 3U));
+    REQUIRE(id3_child == edm::TransitionRecordID(id3, 2U));
+
+    edm::TransitionRecordID id4(0xFFFFFFFFU);
+    edm::TransitionRecordID id4_child(id4, 0xFFFFFFFFULL);
+    auto next4 = id4_child.next();
+    REQUIRE(next4 == edm::TransitionRecordID(id4, 0x100000000ULL));
+
+    edm::TransitionRecordID id5;
+    auto next5 = id5.next();
+    REQUIRE(next5 == edm::TransitionRecordID());
+
+    edm::TransitionRecordID id6(1U);
+    auto next6a = id6.next();
+    auto next6b = id6.next();
+    REQUIRE(next6a == next6b);
+    REQUIRE(next6a == edm::TransitionRecordID(2U));
+  }
 }

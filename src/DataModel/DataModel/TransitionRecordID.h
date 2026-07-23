@@ -58,6 +58,16 @@ namespace edm {
       return *this;
     }
 
+    TransitionRecordID next() const {
+      TransitionRecordID nextID(*this);
+      if (nextID.size() != 0) {
+        if (0 == ++(*(nextID.end() - 1)) and nextID.size() > 1) {
+          ++(*(nextID.end() - 2));  //increment the next to last element if the last element overflows
+        }
+      }
+      return nextID;
+    }
+
     std::strong_ordering operator<=>(const TransitionRecordID& iRHS) const noexcept;
     constexpr bool operator==(const TransitionRecordID& iRHS) const noexcept {
       return (*this <=> iRHS) == std::strong_ordering::equal;
