@@ -108,4 +108,14 @@ TEST_CASE("TransitionRecordID can be constructed and compared") {
     REQUIRE(next6a == next6b);
     REQUIRE(next6a == edm::TransitionRecordID(2U));
   }
+  SECTION("endOfTime() method") {
+    edm::TransitionRecordID endOfTime = edm::TransitionRecordID::endOfTime();
+    REQUIRE(endOfTime.size() == 4);
+    edm::TransitionRecordID max1(0xFFFFFFFFU);
+    edm::TransitionRecordID max2(max1, 0xFFFFFFFFU);
+    edm::TransitionRecordID max3(max2, 0xFFFFFFFFU);
+    edm::TransitionRecordID max4(max3, 0xFFFFFFFFU);
+    REQUIRE(endOfTime == max4);
+    REQUIRE(endOfTime.next() == max4);
+  }
 }

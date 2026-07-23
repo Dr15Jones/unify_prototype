@@ -19,12 +19,19 @@
 namespace edm {
   class TransitionRecordID {
   public:
+    struct EndOfTimeTag {};
     constexpr TransitionRecordID() noexcept : size_(0) { id_.array_ = {0}; }
     constexpr explicit TransitionRecordID(std::uint32_t id) noexcept : id_{}, size_(0) { addAtEnd(id); }
     constexpr explicit TransitionRecordID(std::uint64_t id) noexcept : id_{}, size_(0) {
       //high word first
       addAtEnd(static_cast<std::uint32_t>((id >> 32) & 0xFFFFFFFF));
       addAtEnd(static_cast<std::uint32_t>(id & 0xFFFFFFFF));
+    }
+    constexpr TransitionRecordID(EndOfTimeTag) noexcept : size_(kArraySize) {
+      id_.array_ = {std::numeric_limits<std::uint32_t>::max(),
+                    std::numeric_limits<std::uint32_t>::max(),
+                    std::numeric_limits<std::uint32_t>::max(),
+                    std::numeric_limits<std::uint32_t>::max()};
     }
     explicit TransitionRecordID(TransitionRecordID const& iOther, std::uint32_t id) : TransitionRecordID(iOther) {
       addAtEnd(id);
@@ -58,7 +65,18 @@ namespace edm {
       return *this;
     }
 
+    static TransitionRecordID invalid() { return TransitionRecordID{}; }
+    static TransitionRecordID beginOfTime() { return TransitionRecordID{0U}; }
+    static TransitionRecordID endOfTime() { return TransitionRecordID{EndOfTimeTag{}}; }
+
+    //returns the next TransitionRecordID in the same level of the hierarchy. If this is an empty TransitionRecordID, then the next TransitionRecordID is also empty.
     TransitionRecordID next() const {
+      if (size_ == 0) {
+        return TransitionRecordID{};
+      }
+      if (size_ == 4 and *this == TransitionRecordID::endOfTime()) {
+        return TransitionRecordID::endOfTime();
+      }
       TransitionRecordID nextID(*this);
       if (nextID.size() != 0) {
         if (0 == ++(*(nextID.end() - 1)) and nextID.size() > 1) {
