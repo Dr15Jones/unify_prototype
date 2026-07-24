@@ -78,10 +78,10 @@ namespace edm {
         return TransitionRecordID::endOfTime();
       }
       TransitionRecordID nextID(*this);
-      if (nextID.size() != 0) {
-        if (0 == ++(*(nextID.end() - 1)) and nextID.size() > 1) {
-          ++(*(nextID.end() - 2));  //increment the next to last element if the last element overflows
-        }
+      //handle potential carry-over when incrementing the last element of the ID
+      auto pEntry = nextID.end() - 1;
+      while (0 == ++(*pEntry) and pEntry != nextID.begin()) {
+        --pEntry;
       }
       return nextID;
     }
