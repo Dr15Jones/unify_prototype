@@ -38,6 +38,7 @@ namespace edm {
   void ConcurrentTransitionScheduler::readAsync(edm::SourceCoordinator& coordinator,
                                                 edm::TransitionRecordID const& recordID,
                                                 edm::ConcurrentTransitionID& oTransitionID,
+                                                std::shared_ptr<ConditionsContextResource> context,
                                                 edm::WaitingTaskHolder lastTask,
                                                 edm::WaitingTaskHolder nextTask) {
     transitionResource_.reset();
@@ -52,6 +53,7 @@ namespace edm {
                          &coordinator,
                          recordID,
                          fileResource,
+                         context,
                          &oTransitionID,
                          holder = std::move(nextTask),
                          lastTask = std::move(lastTask)](auto iResumer, size_t index) mutable {
@@ -67,6 +69,7 @@ namespace edm {
                             return;
                           }
                           concurrentRecords_[index] = recordID;
+                          concurrentHeldContexts_[index] = std::move(context);
                           announceNewTransitionComing(streamID, recordID, std::move(iResumer), std::move(lastTask));
                           holdResources(streamID);
                           beginTransitionRan_[streamID.id()] = 0;
@@ -225,6 +228,7 @@ namespace edm {
     for (auto& resource : concurrentHeldSupporterResources_[id.id()]) {
       resource.reset();
     }
+    concurrentHeldContexts_[id.id()].reset();
   }
   //Called while the TransitionDistributor is still paused, so we don't have to worry about synchronization here.
   void ConcurrentTransitionScheduler::announceNewTransitionComing(edm::ConcurrentTransitionID index,
@@ -259,7 +263,11 @@ namespace edm {
                                                         edm::WaitingTaskHolder holder) {
     // Simulate beginning the global transition here
     for (const auto& action : beginActions_) {
-      action->performAsync(holder, transition_, stream, concurrentRecords_[stream.id()]);
+      action->performAsync(holder,
+                           transition_,
+                           stream,
+                           concurrentRecords_[stream.id()],
+                           concurrentHeldContexts_[stream.id()]->interval());
     }
     //std::cout << "global begin transition " << transition_.name() << " for stream " << stream.id() << std::endl;
     holder.doneWaiting(std::exception_ptr{});
@@ -303,7 +311,7 @@ namespace edm {
     }
     beginSupporterTransitionRan_[stream.id()][key] = true;
     for (const auto& action : it->second) {
-      action->performAsync(holder, key, stream, recordID);
+      action->performAsync(holder, key, stream, recordID, concurrentHeldContexts_[stream.id()]->interval());
     }
     // Simulate beginning the dependent transition here
     //std::cout << "begin dependent transition " << key.name() << " for stream " << stream.id() << std::endl;
@@ -346,7 +354,7 @@ namespace edm {
       return;
     }
     for (const auto& action : it->second) {
-      action->performAsync(holder, key, stream, recordID);
+      action->performAsync(holder, key, stream, recordID, concurrentHeldContexts_[stream.id()]->interval());
     }
     // Simulate ending the dependent transition here
     holder.doneWaiting(std::exception_ptr{});
@@ -356,7 +364,11 @@ namespace edm {
                                                       edm::WaitingTaskHolder holder) {
     // Simulate ending the global transition here
     for (const auto& action : endActions_) {
-      action->performAsync(holder, transition_, stream, concurrentRecords_[stream.id()]);
+      action->performAsync(holder,
+                           transition_,
+                           stream,
+                           concurrentRecords_[stream.id()],
+                           concurrentHeldContexts_[stream.id()]->interval());
     }
     //std::cout << "global end transition " << transition_.name() << " for stream " << stream.id() << std::endl;
     holder.doneWaiting(std::exception_ptr{});

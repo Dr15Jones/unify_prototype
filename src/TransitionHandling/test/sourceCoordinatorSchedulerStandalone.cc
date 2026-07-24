@@ -37,20 +37,19 @@ namespace {
   struct AtomicContainer {
     std::unique_ptr<std::atomic<std::size_t>[]> data_;
     std::size_t size_;
-    AtomicContainer(std::size_t size) : data_(std::make_unique<std::atomic<std::size_t>[]>(size)), size_(size) {
-    }
+    AtomicContainer(std::size_t size) : data_(std::make_unique<std::atomic<std::size_t>[]>(size)), size_(size) {}
     using iterator = std::atomic<std::size_t>*;
 
-    std::atomic<std::size_t>& operator[](std::size_t index) {
-      return data_[index];
-    }
+    std::atomic<std::size_t>& operator[](std::size_t index) { return data_[index]; }
     iterator begin() { return data_.get(); }
     iterator end() { return data_.get() + size_; }
 
     std::size_t size() const { return size_; }
     std::size_t total() const {
-      return std::accumulate(data_.get(), data_.get() + size_, std::size_t{0},
-                             [](std::size_t sum, const std::atomic<std::size_t>& v) { return sum + v.load(); });
+      return std::accumulate(
+          data_.get(), data_.get() + size_, std::size_t{0}, [](std::size_t sum, const std::atomic<std::size_t>& v) {
+            return sum + v.load();
+          });
     }
   };
   struct Config {
@@ -64,16 +63,14 @@ namespace {
   };
 
   void usage(const char* argv0) {
-    std::cerr
-        << "Usage:\n"
-        << "  " << argv0
-        << " --threads N"
-        << " --run-concurrency N"
-        << " --lumi-concurrency N"
-        << " --event-concurrency N"
-        << " --runs N"
-        << " --lumis-per-run N"
-        << " --events-per-lumi N\n";
+    std::cerr << "Usage:\n"
+              << "  " << argv0 << " --threads N"
+              << " --run-concurrency N"
+              << " --lumi-concurrency N"
+              << " --event-concurrency N"
+              << " --runs N"
+              << " --lumis-per-run N"
+              << " --events-per-lumi N\n";
   }
 
   std::size_t parsePositive(const std::string& text, const char* key) {
@@ -180,7 +177,8 @@ namespace {
     void performAsync(edm::WaitingTaskHolder holder,
                       edm::TransitionRecordKey const&,
                       edm::ConcurrentTransitionID id,
-                      edm::TransitionRecordID const&) final {
+                      edm::TransitionRecordID const&,
+                      edm::ValidityInterval const& interval) final {
       count_[id.id()].fetch_add(1, std::memory_order_relaxed);
       holder.doneWaiting(std::exception_ptr{});
     }
@@ -211,7 +209,7 @@ namespace {
     transitions.emplace_back(edm::SourceNextState::Stop);
     return transitions;
   }
-}
+}  // namespace
 
 int main(int argc, char** argv) {
   Config cfg;
@@ -277,22 +275,22 @@ int main(int argc, char** argv) {
             << "  Lumis : " << actualLumis << " (expected " << expectedLumis << ")\n"
             << "  Events: " << actualEvents << " (expected " << expectedEvents << ")\n";
 
-            std::cout << "Distribution details:\n";
-            std::cout << "  Run concurrency distribution: \n";
-            for (std::size_t i = 0; i < runCount.size(); ++i) {
-              std::cout << "  ID " << i << ": " << runCount[i].load(std::memory_order_relaxed) << " runs; \n";
-            }
-            std::cout << "\n";
-            std::cout << "  Lumi concurrency distribution: \n";
-            for (std::size_t i = 0; i < lumiCount.size(); ++i) {
-              std::cout << "  ID " << i << ": " << lumiCount[i].load(std::memory_order_relaxed) << " lumis; \n";
-            }
-            std::cout << "\n";
-            std::cout << "  Event concurrency distribution: \n";
-            for (std::size_t i = 0; i < eventCount.size(); ++i) {
-              std::cout << "  ID " << i << ": " << eventCount[i].load(std::memory_order_relaxed) << " events; \n";
-            }
-            std::cout << "\n";
+  std::cout << "Distribution details:\n";
+  std::cout << "  Run concurrency distribution: \n";
+  for (std::size_t i = 0; i < runCount.size(); ++i) {
+    std::cout << "  ID " << i << ": " << runCount[i].load(std::memory_order_relaxed) << " runs; \n";
+  }
+  std::cout << "\n";
+  std::cout << "  Lumi concurrency distribution: \n";
+  for (std::size_t i = 0; i < lumiCount.size(); ++i) {
+    std::cout << "  ID " << i << ": " << lumiCount[i].load(std::memory_order_relaxed) << " lumis; \n";
+  }
+  std::cout << "\n";
+  std::cout << "  Event concurrency distribution: \n";
+  for (std::size_t i = 0; i < eventCount.size(); ++i) {
+    std::cout << "  ID " << i << ": " << eventCount[i].load(std::memory_order_relaxed) << " events; \n";
+  }
+  std::cout << "\n";
 
   const bool ok = (actualRuns == expectedRuns) && (actualLumis == expectedLumis) && (actualEvents == expectedEvents);
   if (!ok) {

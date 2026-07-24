@@ -12,6 +12,7 @@
 #include "DataModel/TransitionRecordID.h"
 #include "TransitionHandling/ConcurrentTransitionID.h"
 #include "TransitionHandling/AsyncActionBase.h"
+#include "ConditionsHandling/ConditionsContextResource.h"
 
 namespace edm {
   class SourceCoordinator;
@@ -44,6 +45,7 @@ namespace edm {
           beginTransitionRan_(iNQueues, char8_t{0}),
           concurrentRecords_(iNQueues),
           concurrentHeldSupporterResources_(iNQueues),
+          concurrentHeldContexts_(iNQueues),
           beginSupporterTransitionRan_(iNQueues) {}
     void addDependentScheduler(ConcurrentTransitionScheduler& scheduler) {
       dependentSchedulers_.push_back(&scheduler);
@@ -81,6 +83,7 @@ namespace edm {
     void readAsync(edm::SourceCoordinator& coordinator,
                    edm::TransitionRecordID const& recordID,
                    ConcurrentTransitionID& oTransitionID,
+                   std::shared_ptr<ConditionsContextResource> context,
                    edm::WaitingTaskHolder lastTask,
                    edm::WaitingTaskHolder nextTask);
 
@@ -157,6 +160,7 @@ namespace edm {
     //For each stream (index) holds the waiting tasks for the dependent transitions. The tasks are informed once the transition record is available and can then run the dependent transitions when they are scheduled to run.
     std::vector<edm::WaitingTaskList> waitingDependentTransitionTasks_;
     std::vector<edm::TransitionRecordID> concurrentRecords_;
+    std::vector<std::shared_ptr<ConditionsContextResource>> concurrentHeldContexts_;
     //use char not bool so have separately addressable memory for different threads to read/write.
     std::vector<char8_t> beginTransitionRan_;
     //For each stream (first index) and each data dependent transition (second index) holds the resource for that transition while the stream is processing it. This allows us to release all resources for a stream at once when it finishes processing the transition.

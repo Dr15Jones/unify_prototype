@@ -19,6 +19,11 @@
 #include "TransitionHandling/ConcurrentTransitionScheduler.h"
 #include "TransitionHandling/TransitionsDistributor.h"
 #include "TransitionHandling/AsyncActionBase.h"
+#include "ConditionsHandling/ConditionsIntervalFinder.h"
+#include "ConditionsHandling/ConditionsContextDistributor.h"
+#include "ConditionsHandling/ConcurrentIntervalScheduler.h"
+#include "ConditionsHandling/ConditionsContextResource.h"
+#include "ConditionsHandling/ValidityInterval.h"
 #include "oneapi/tbb/task_arena.h"
 
 namespace {
@@ -31,13 +36,17 @@ namespace {
   struct Event {};
   constexpr auto kEventKey = edm::TransitionRecordKey::makeKey<Event>();
 
+  struct LumiConditions {};
+  constexpr auto kLumiConditionsKey = edm::ConditionsRecordKey::makeKey<LumiConditions>();
+
   class PrintAction final : public edm::AsyncActionBase {
   public:
     explicit PrintAction(std::string purpose) : purpose_(std::move(purpose)) {}
     void performAsync(edm::WaitingTaskHolder holder,
                       edm::TransitionRecordKey const& key,
                       edm::ConcurrentTransitionID streamID,
-                      edm::TransitionRecordID const& recordID) final {
+                      edm::TransitionRecordID const& recordID,
+                      edm::ValidityInterval const& interval) final {
 #ifndef NDEBUG
       std::cout << "Performing action " << purpose_ << " for transition " << key.name() << " on stream "
                 << streamID.id() << " with record ID of ";
@@ -65,7 +74,8 @@ namespace {
     void performAsync(edm::WaitingTaskHolder holder,
                       edm::TransitionRecordKey const& key,
                       edm::ConcurrentTransitionID streamID,
-                      edm::TransitionRecordID const& recordID) final {
+                      edm::TransitionRecordID const& recordID,
+                      edm::ValidityInterval const& interval) final {
       try {
         REQUIRE(key == expectedKey_);
         REQUIRE(expectedTransitions_.size() > currentIndex_);
@@ -93,7 +103,8 @@ namespace {
     void performAsync(edm::WaitingTaskHolder holder,
                       edm::TransitionRecordKey const& key,
                       edm::ConcurrentTransitionID streamID,
-                      edm::TransitionRecordID const& recordID) final {
+                      edm::TransitionRecordID const& recordID,
+                      edm::ValidityInterval const& interval) final {
       try {
         REQUIRE(key == expectedKey_);
         REQUIRE(timesCalled_ < expectedCounts_.size());
@@ -120,11 +131,12 @@ namespace {
     void performAsync(edm::WaitingTaskHolder holder,
                       edm::TransitionRecordKey const& key,
                       edm::ConcurrentTransitionID streamID,
-                      edm::TransitionRecordID const& recordID) final {
+                      edm::TransitionRecordID const& recordID,
+                      edm::ValidityInterval const& interval) final {
       auto count = counter_++;
       if (count == countThreshold_) {
         //std::cout << "** Throwing exception for " << key.name() << " on stream " << streamID.id() << " at count "
-                  //<< count << std::endl;
+        //<< count << std::endl;
         auto fullMessage = message_ + " at count " + std::to_string(count) + " " + key.name() + " for stream " +
                            std::to_string(streamID.id());
         holder.doneWaiting(std::make_exception_ptr(std::runtime_error(fullMessage)));
@@ -241,8 +253,83 @@ namespace {
     const int throwWhenAtIndex_;
   };
 
-}  // namespace
+  class TestIntervalFinder final : public edm::ConditionsIntervalFinder {
+  public:
+    explicit TestIntervalFinder(
+        std::unordered_map<edm::ConditionsRecordKey, std::vector<edm::ValidityInterval>, edm::ConditionsRecordKeyHash>
+            intervals)
+        : intervals_(std::move(intervals)) {}
 
+    std::vector<edm::ConditionsRecordKey> findingForRecords() const final {
+      std::vector<edm::ConditionsRecordKey> keys;
+      for (auto const& [key, _] : intervals_) {
+        keys.push_back(key);
+      }
+      return keys;
+    }
+
+    edm::ValidityInterval findIntervalFor(edm::ConditionsRecordKey const& key,
+                                          edm::TransitionRecordID const& recordID) const final {
+      auto it = intervals_.find(key);
+      if (it == intervals_.end()) {
+        return edm::ValidityInterval{};
+      }
+      for (auto const& interval : it->second) {
+        if (interval.validFor(recordID)) {
+          return interval;
+        }
+      }
+      return edm::ValidityInterval{};
+    }
+
+  private:
+    std::unordered_map<edm::ConditionsRecordKey, std::vector<edm::ValidityInterval>, edm::ConditionsRecordKeyHash>
+        intervals_;
+  };
+
+  class PrintIntervalAction final : public edm::AsyncActionBase {
+  public:
+    explicit PrintIntervalAction(std::string purpose) : purpose_(std::move(purpose)) {}
+    void performAsync(edm::WaitingTaskHolder holder,
+                      edm::TransitionRecordKey const& key,
+                      edm::ConcurrentTransitionID streamID,
+                      edm::TransitionRecordID const& recordID,
+                      edm::ValidityInterval const& interval) final {
+#ifndef NDEBUG
+      std::cout << "Performing action " << purpose_ << " for transition " << key.name() << " on stream "
+                << streamID.id() << " with record ID of " << recordID << " and interval " << interval << "\n";
+#endif
+      holder.doneWaiting(std::exception_ptr{});
+    }
+
+  private:
+    std::string purpose_;
+  };
+
+  class CheckIntervalAction final : public edm::AsyncActionBase {
+  public:
+    CheckIntervalAction(edm::TransitionRecordKey expectedKey,
+                        std::vector<std::pair<edm::TransitionRecordID, edm::ValidityInterval>> expectedIntervals)
+        : expectedKey_(expectedKey), expectedIntervals_(std::move(expectedIntervals)) {}
+    void performAsync(edm::WaitingTaskHolder holder,
+                      edm::TransitionRecordKey const& key,
+                      edm::ConcurrentTransitionID streamID,
+                      edm::TransitionRecordID const& recordID,
+                      edm::ValidityInterval const& interval) final {
+      REQUIRE(key == expectedKey_);
+      auto it = std::find_if(expectedIntervals_.begin(), expectedIntervals_.end(), [&recordID](auto const& pair) {
+        return pair.first == recordID;
+      });
+      REQUIRE(it != expectedIntervals_.end());
+      REQUIRE(it->second == interval);
+      holder.doneWaiting(std::exception_ptr{});
+    }
+
+  private:
+    edm::TransitionRecordKey expectedKey_;
+    std::vector<std::pair<edm::TransitionRecordID, edm::ValidityInterval>> expectedIntervals_;
+  };
+}  // namespace
 TEST_CASE("Test schedule", "[Schedule]") {
   SECTION("test source") {
     std::vector<edm::SourcePeekResult> transitions{
@@ -2032,5 +2119,49 @@ TEST_CASE("Test schedule", "[Schedule]") {
         REQUIRE(counter == 2U);
       }
     }
+  }
+  SECTION("ConditionsContextResource across Lumis") {
+    auto runID1 = edm::TransitionRecordID(1U);
+    auto lumiID1 = edm::TransitionRecordID(runID1, 1U);
+    auto lumiID2 = edm::TransitionRecordID(runID1, 2U);
+    auto lumiID3 = edm::TransitionRecordID(runID1, 3U);
+
+    std::unordered_map<edm::ConditionsRecordKey, std::vector<edm::ValidityInterval>, edm::ConditionsRecordKeyHash>
+        intervals;
+    intervals[kLumiConditionsKey] = {edm::ValidityInterval(lumiID1, lumiID2), edm::ValidityInterval(lumiID2, lumiID3)};
+
+    auto testFinder = std::make_unique<TestIntervalFinder>(std::move(intervals));
+
+    std::vector<edm::SourcePeekResult> transitions{
+        edm::SourcePeekResult{edm::SourceNextState::File},
+        edm::SourcePeekResult{edm::SourceNextState::DataTransition, kRunKey, edm::TransitionRecordID(1U)},
+        edm::SourcePeekResult{
+            edm::SourceNextState::DataTransition, kLumiKey, edm::TransitionRecordID(edm::TransitionRecordID(1U), 1U)},
+        edm::SourcePeekResult{
+            edm::SourceNextState::DataTransition, kLumiKey, edm::TransitionRecordID(edm::TransitionRecordID(1U), 2U)},
+        edm::SourcePeekResult{edm::SourceNextState::Stop},
+    };
+
+    edm::SourceCoordinator coordinator(std::make_unique<TestSource>(std::move(transitions)));
+    edm::TransitionsDistributor distributor(coordinator);
+
+    edm::ConcurrentTransitionScheduler runScheduler(kRunKey, 1);
+    edm::ConcurrentTransitionScheduler lumiScheduler(kLumiKey, 1);
+    lumiScheduler.addBeginAction(std::make_unique<PrintIntervalAction>("Lumi Begin"));
+    lumiScheduler.addBeginAction(std::make_unique<CheckIntervalAction>(
+        kLumiKey,
+        std::vector<std::pair<edm::TransitionRecordID, edm::ValidityInterval>>{
+            {lumiID1, edm::ValidityInterval(lumiID1, lumiID2)}, {lumiID2, edm::ValidityInterval(lumiID2, lumiID3)}}));
+    runScheduler.addDependentScheduler(lumiScheduler);
+
+    distributor.addSchedulerForTransition(kRunKey, runScheduler);
+    distributor.addSchedulerForTransition(kLumiKey, lumiScheduler);
+    distributor.addIntervalFinder(std::move(testFinder));
+    edm::ConcurrentIntervalScheduler lumiConditionsScheduler(kLumiConditionsKey, 1);
+    distributor.addSchedulerForRecord(kLumiConditionsKey, &lumiConditionsScheduler);
+
+    tbb::task_arena arena(1);
+    arena.execute(
+        [&distributor, runScheduler = &runScheduler, lumiScheduler = &lumiScheduler]() { distributor.processData(); });
   }
 }

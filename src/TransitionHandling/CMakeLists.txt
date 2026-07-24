@@ -8,6 +8,6 @@ add_library(TransitionHandling SHARED ${CLASS_SOURCES})
 # Optionally, include the Class directory for headers
 target_include_directories(TransitionHandling PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(TransitionHandling PUBLIC DataProductBase DataModel Base Concurrency)
+target_link_libraries(TransitionHandling PUBLIC ConditionsHandling DataProductBase DataModel Base Concurrency)
 
 add_subdirectory(test)

@@ -7,6 +7,8 @@
 #include "TransitionHandling/SourceCoordinator.h"
 #include "TransitionHandling/SourcePeekResult.h"
 #include "TransitionHandling/FilesProcessor.h"
+#include "ConditionsHandling/ConditionsContextDistributor.h"
+#include "ConditionsHandling/ConditionsContextResource.h"
 #include "Concurrency/WaitingTaskHolder.h"
 
 #include <optional>
@@ -23,6 +25,13 @@ namespace edm {
     TransitionsDistributor(edm::SourceCoordinator& coordinator) : coordinator_(coordinator) {}
     void addSchedulerForTransition(edm::TransitionRecordKey transitionKey, ConcurrentTransitionScheduler& scheduler);
 
+    void addIntervalFinder(std::unique_ptr<ConditionsIntervalFinder> finder) {
+      conditionsDistributor_.addIntervalFinder(std::move(finder));
+    }
+    void addSchedulerForRecord(ConditionsRecordKey key, ConcurrentIntervalScheduler* scheduler) {
+      conditionsDistributor_.addSchedulerForRecord(key, scheduler);
+    }
+
     void processData();
 
     void failedDuringRead() { failureDuringRead_ = true; }
@@ -33,11 +42,14 @@ namespace edm {
     void tryToMergeAfterNewFileAsync(std::optional<edm::TransitionRecordID> recordID, edm::WaitingTaskHolder holder);
     edm::SourceCoordinator& coordinator_;
     FilesProcessor filesProcessor_;
+    ConditionsContextDistributor conditionsDistributor_;
+    std::shared_ptr<ConditionsContextResource> lastContext_;
     std::optional<edm::SourcePeekResult> nextTransition_;
-    std::unordered_map<edm::TransitionRecordKey, ConcurrentTransitionScheduler*, edm::TransitionRecordKeyHash> schedulers_;
+    std::unordered_map<edm::TransitionRecordKey, ConcurrentTransitionScheduler*, edm::TransitionRecordKeyHash>
+        schedulers_;
     std::atomic<bool> failureDuringRead_{false};
     std::atomic<bool> failureDuringProcessing_{false};
   };
 }  // namespace edm
 
-#endif // TransitionHandling_TransitionsDistributor_h
+#endif  // TransitionHandling_TransitionsDistributor_h

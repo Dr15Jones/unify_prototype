@@ -1,6 +1,7 @@
 #include "TransitionHandling/TransitionsDistributor.h"
 #include "TransitionHandling/TransitionsDistributorGuard.h"
 #include "TransitionHandling/ConcurrentTransitionScheduler.h"
+#include "ConditionsHandling/ConditionsContextResource.h"
 #include "Concurrency/chain_first.h"
 #include "Concurrency/FinalWaitingTask.h"
 
@@ -27,6 +28,7 @@ namespace edm {
     using namespace edm::waiting_task;
     chain::first([this](edm::WaitingTaskHolder holder) {
       if (failureDuringRead_ or failureDuringProcessing_) {
+        lastContext_.reset();
         holder.doneWaiting(std::exception_ptr{});
         return;
       }
@@ -43,6 +45,7 @@ namespace edm {
       if (ptr or failureDuringRead_ or failureDuringProcessing_ or (not nextTransition_.has_value()) or
           nextTransition_.value().state() == edm::SourceNextState::Stop) {
         // No more transitions to process, just finish
+        lastContext_.reset();
         filesProcessor_.doneProcessing();
         for (auto& [_, scheduler] : schedulers_) {
           scheduler->doneProcessing();
@@ -80,12 +83,17 @@ namespace edm {
           std::make_unique<edm::ConcurrentTransitionID>(std::numeric_limits<std::size_t>::max());
       auto* pActiveStream = activeStream.get();
       auto recordID = nextTransition_.value().recordID().value();
-      chain::first([recordID, this, pActiveStream, lastTask = finalTask, scheduler](
-                       edm::WaitingTaskHolder holder) mutable {
-        //Setup Conditions here?
-
-        scheduler->second->readAsync(coordinator_, recordID, *pActiveStream, std::move(lastTask), std::move(holder));
-      }) |
+      chain::first(
+          [recordID, this, pActiveStream, lastTask = finalTask, scheduler](edm::WaitingTaskHolder holder) mutable {
+            //Setup Conditions here?
+            if (not lastContext_ or lastContext_->interval().mightNeedUpdate(recordID)) {
+              lastContext_ = std::make_shared<ConditionsContextResource>();
+              conditionsDistributor_.contextForAsync(recordID, *lastContext_, holder);
+            }
+            //need to pass conditions resource to readAsync as it is where supporter resources are held.
+            scheduler->second->readAsync(
+                coordinator_, recordID, *pActiveStream, lastContext_, std::move(lastTask), std::move(holder));
+          }) |
           chain::then([this,
                        scheduler,
                        activeStream = std::move(activeStream),

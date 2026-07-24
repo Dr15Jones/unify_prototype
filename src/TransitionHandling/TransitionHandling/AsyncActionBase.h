@@ -10,6 +10,7 @@ namespace edm {
   class TransitionRecordKey;
   class TransitionRecordID;
   class ConcurrentTransitionID;
+  class ValidityInterval;
 
   class AsyncActionBase {
   public:
@@ -20,7 +21,8 @@ namespace edm {
     virtual void performAsync(edm::WaitingTaskHolder,
                               edm::TransitionRecordKey const&,
                               edm::ConcurrentTransitionID,
-                              edm::TransitionRecordID const&) = 0;
+                              edm::TransitionRecordID const&,
+                              edm::ValidityInterval const&) = 0;
     /*
     //Both TransitionContext and SchedulingResults have lifetimes longer than the asynchronous operation.
     virtual void performAsync(WaitingTaskHolder, edm::TransitionRecordKey const&, edm::ConcurrentTransitionID, TransitionContext&, SchedulingResults&) = 0;
