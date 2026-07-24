@@ -14,16 +14,18 @@ namespace edm {
 
     void addRecordResource(std::shared_ptr<ConditionsRecordResource> recordResource) {
       recordResources_.push_back(recordResource);
+      interval_.overlapWith(recordResource->validityInterval_);
     }
 
-    const std::vector<std::shared_ptr<ConditionsRecordResource>>& recordResources() const {
-      return recordResources_;
-    }
+    const std::vector<std::shared_ptr<ConditionsRecordResource>>& recordResources() const { return recordResources_; }
+
+    edm::ValidityInterval const& interval() const { return interval_; }
 
     void clear() { recordResources_.clear(); }
 
   private:
     std::vector<std::shared_ptr<ConditionsRecordResource>> recordResources_;
+    edm::ValidityInterval interval_;
   };
 }  // namespace edm
 
