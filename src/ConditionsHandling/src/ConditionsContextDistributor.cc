@@ -7,7 +7,7 @@ namespace edm {
                                                      edm::WaitingTaskHolder holder) {
     for (auto& [key, scheduler] : recordKeyToScheduler_) {
       auto& interval = recordKeyToLatestInterval_[key];
-      if (not interval.validFor(recordID)) {
+      if (interval.mightNeedUpdate(recordID)) {
         interval = intervalCoordinator_.findIntervalFor(key, recordID);
         recordKeyToLatestInterval_[key] = interval;
       }

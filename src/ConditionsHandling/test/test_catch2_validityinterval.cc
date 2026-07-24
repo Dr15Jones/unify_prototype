@@ -119,6 +119,66 @@ namespace {
       REQUIRE(interval.validFor(lumiID4) == false);
     }
 
+    SECTION("mightNeedUpdate with closed interval") {
+      auto runID1 = edm::TransitionRecordID(1U);
+      auto runID2 = edm::TransitionRecordID(2U);
+      auto runID3 = edm::TransitionRecordID(3U);
+      auto runID4 = edm::TransitionRecordID(4U);
+      edm::ValidityInterval interval(runID1, runID3);
+      REQUIRE(interval.mightNeedUpdate(runID1) == false);
+      REQUIRE(interval.mightNeedUpdate(runID2) == false);
+      REQUIRE(interval.mightNeedUpdate(runID3) == true);
+      REQUIRE(interval.mightNeedUpdate(runID4) == true);
+    }
+
+    SECTION("mightNeedUpdate with too small interval") {
+      auto runID1 = edm::TransitionRecordID(1U);
+      auto lumiID1 = edm::TransitionRecordID(runID1, 1U);
+      auto lumiID2 = edm::TransitionRecordID(runID1, 2U);
+      edm::ValidityInterval interval(runID1, lumiID2);
+      REQUIRE(interval.mightNeedUpdate(runID1) == true);
+      REQUIRE(interval.mightNeedUpdate(lumiID1) == false);
+      REQUIRE(interval.mightNeedUpdate(lumiID2) == true);
+    }
+
+    SECTION("mightNeedUpdate with open-ended interval") {
+      auto runID1 = edm::TransitionRecordID(1U);
+      edm::ValidityInterval interval(runID1, edm::TransitionRecordID());
+      REQUIRE(interval.mightNeedUpdate(runID1) == true);
+      REQUIRE(interval.mightNeedUpdate(edm::TransitionRecordID(2U)) == true);
+      REQUIRE(interval.mightNeedUpdate(edm::TransitionRecordID(100U)) == true);
+    }
+
+    SECTION("mightNeedUpdate with empty interval") {
+      edm::ValidityInterval interval;
+      auto runID = edm::TransitionRecordID(1U);
+      REQUIRE(interval.mightNeedUpdate(runID) == true);
+    }
+
+    SECTION("mightNeedUpdate with lumi-level IDs") {
+      auto runID = edm::TransitionRecordID(1U);
+      auto lumiID1 = edm::TransitionRecordID(runID, 1U);
+      auto lumiID2 = edm::TransitionRecordID(runID, 2U);
+      auto lumiID3 = edm::TransitionRecordID(runID, 3U);
+      auto lumiID4 = edm::TransitionRecordID(runID, 4U);
+      edm::ValidityInterval interval(lumiID1, lumiID3);
+      REQUIRE(interval.mightNeedUpdate(runID) == true);
+      REQUIRE(interval.mightNeedUpdate(lumiID1) == false);
+      REQUIRE(interval.mightNeedUpdate(lumiID2) == false);
+      REQUIRE(interval.mightNeedUpdate(lumiID3) == true);
+      REQUIRE(interval.mightNeedUpdate(lumiID4) == true);
+    }
+
+    SECTION("mightNeedUpdate with non-overlapping intervals") {
+      auto runID1 = edm::TransitionRecordID(1U);
+      auto runID2 = edm::TransitionRecordID(2U);
+      auto runID3 = edm::TransitionRecordID(3U);
+      auto runID4 = edm::TransitionRecordID(4U);
+      edm::ValidityInterval interval1(runID1, runID2);
+      REQUIRE(interval1.mightNeedUpdate(runID3) == true);
+      REQUIRE(interval1.mightNeedUpdate(runID4) == true);
+    }
+
     SECTION("operators") {
       auto runID1 = edm::TransitionRecordID(1U);
       auto runID2 = edm::TransitionRecordID(2U);
