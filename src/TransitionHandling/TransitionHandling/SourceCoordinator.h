@@ -1,5 +1,8 @@
 #ifndef TransitionHandling_SourceCoordinator_h
 #define TransitionHandling_SourceCoordinator_h
+/*
+ * A class for handling asynchronous communication with a SourceBase instance. It provides methods for peeking at the next transition, reading transitions, and merging transitions, all in an asynchronous manner using a SerialTaskQueue.
+ */
 #include "DataModel/TransitionRecordKey.h"
 #include "TransitionHandling/SourceBase.h"
 #include "TransitionHandling/SourcePeekResult.h"

@@ -1,5 +1,8 @@
 #ifndef ConditionsHandling_ConditionsContextDistributor_h
 #define ConditionsHandling_ConditionsContextDistributor_h
+/**
+ * A class for assigning the appropriate ConcurrentIntervalResources to a ConditionsContextResource based on the validity intervals of conditions records.
+ */
 
 #include "ConditionsHandling/ConditionsIntervalCoordinator.h"
 #include "ConditionsDataModel/ConditionsRecordKeyHash.h"

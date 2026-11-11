@@ -11,7 +11,7 @@
 
  Usage:
     A ConcurrentTransitionsTaskQueue is used to provide access to a limited thread-safe resource. You create a ConcurrentTransitionsTaskQueue
- for the resource. When every you need to perform an operation on the resource, you push a 'task' that
+ for the resource. When ever you need to perform an operation on the resource, you push a 'task' that
  does that operation onto the queue. The queue then makes sure to run a limited number of tasks at a time.
  
     The 'tasks' managed by the ConcurrentTransitionsTaskQueue are just functor objects who which take no arguments and
@@ -120,6 +120,10 @@ namespace edm {
       requires requires(T&& t, Resumer&& r, size_t s) { t(std::move(r), s); }
     void pushAndPause(oneapi::tbb::task_group& iGroup, T&& iAction);
 
+    /** \brief Guarantees that iAction will be run on all queues. Multiple actions given to pushToAllAndPause
+     *   will be run in the order they were pushed. Each action will be run on all queues before the next action is run.
+     *   This also guarantees that all queues see the action in the same order.
+     */
     template <typename T>
       requires requires(T&& t, Resumer&& r, size_t s) { t(std::move(r), s); }
     void pushToAllAndPause(oneapi::tbb::task_group& iGroup, T&& iAction);

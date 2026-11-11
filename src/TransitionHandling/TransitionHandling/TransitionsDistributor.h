@@ -1,6 +1,11 @@
 #ifndef TransitionHandling_TransitionsDistributor_h
 #define TransitionHandling_TransitionsDistributor_h
 
+/**
+ * A class for obtaining a sequence of transitions from a source and distributing them to the appropriate ConcurrentTransitionSchedulers.
+ * This class manages the reading of transitions from the source and ensures that they are processed in the correct order by the appropriate schedulers.
+ */
+
 #include "DataModel/TransitionRecordKey.h"
 #include "DataModel/TransitionRecordKeyHash.h"
 #include "DataModel/TransitionRecordID.h"

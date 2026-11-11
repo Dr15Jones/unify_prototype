@@ -1,6 +1,9 @@
 #ifndef TransitionHandling_ConcurrentTransitionScheduler_h
 #define TransitionHandling_ConcurrentTransitionScheduler_h
-
+/**
+ * A class for managing the concurrent processing of one type of transition.
+ * This includes running actions related to the transition itself, as well as actions related to any supporter transitions that are associated with the transition.
+ */
 #include <vector>
 #include <unordered_map>
 #include <memory>

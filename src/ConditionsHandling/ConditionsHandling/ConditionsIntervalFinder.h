@@ -1,5 +1,9 @@
 #ifndef ConditionsHandling_ConditionsIntervalFinder_h
 #define ConditionsHandling_ConditionsIntervalFinder_h
+/**
+ * A class for finding the valid intervals for a set of conditions records.
+ * This is used to determine which conditions records are valid for a given TransitionRecordID.
+ */
 
 #include "ConditionsDataModel/ConditionsRecordKey.h"
 #include "DataModel/TransitionRecordID.h"

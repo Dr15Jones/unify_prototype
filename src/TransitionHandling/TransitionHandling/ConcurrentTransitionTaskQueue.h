@@ -7,50 +7,13 @@
 //
 /**\class ConcurrentTransitionTaskQueue ConcurrentTransitionTaskQueue.h "TransitionHandling/ConcurrentTransitionTaskQueue.h"
 
- Description: Runs only one task from the queue at a time
+ Description: An implementation detail of ConcurrentTransitionsTaskQueue that manages a single queue of tasks.
 
  Usage:
-    A ConcurrentTransitionTaskQueue is used to provide thread-safe access to a resource. You create a ConcurrentTransitionTaskQueue
- for the resource. When every you need to perform an operation on the resource, you push a 'task' that
- does that operation onto the queue. The queue then makes sure to run one and only one task at a time.
- This guarantees serial access to the resource and therefore thread-safety.
- 
-    The 'tasks' managed by the ConcurrentTransitionTaskQueue are just functor objects who which take no arguments and
- return no values. The simplest way to create a task is to use a C++11 lambda.
- 
- Example: Imagine we have the following data structures.
- \code
- std::vector<int> values;
- edm::ConcurrentTransitionTaskQueue queue;
- \endcode
-
- On thread 1 we can fill the vector
- \code
- for(int i=0; i<1000;++i) {
-   queue.pushAndWait( [&values,i]{ values.push_back(i);} );
- }
- \endcode
- 
- While on thread 2 we periodically print and stop when the vector is filled
- \code
- bool stop = false;
- while(not stop) {
-   queue.pushAndWait([&false,&values] {
-     if( 0 == (values.size() % 100) ) {
-        std::cout <<values.size()<<std::endl;
-     }
-     if(values.size()>999) {
-       stop = true;
-     }
-   });
- }
-\endcode
+ This class manages a single queue of tasks. It is used by ConcurrentTransitionsTaskQueue to manage multiple queues of tasks.
+ The class pulls tasks from the queue held by the ConcurrentTransitionsTaskQueue and runs them. It will only run a task if the
+ queue is not paused. If the queue is paused, it will wait until the queue is resumed before running the next task.
 */
-//
-// Original Author:  Chris Jones
-//         Created:  Thu Feb 21 11:14:39 CST 2013
-// $Id$
-//
 
 // system include files
 #include <atomic>

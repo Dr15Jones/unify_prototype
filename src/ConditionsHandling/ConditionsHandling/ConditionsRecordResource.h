@@ -1,5 +1,8 @@
 #ifndef ConditionsHandling_CondidtionsContextRecordResource_h
 #define ConditionsHandling_CondidtionsContextRecordResource_h
+/* 
+ * A class for managing the interval of validity for a single record instance.
+ */
 #include "ConditionsDataModel/ConditionsRecordKey.h"
 #include "ConditionsHandling/ValidityInterval.h"
 #include "ConditionsHandling/ConcurrentIntervalID.h"

@@ -1,6 +1,10 @@
 #ifndef ConditionsHandling_ConditionsIntervalCoordinator_h
 #define ConditionsHandling_ConditionsIntervalCoordinator_h
 
+/**
+ * A class for coordinating the finding of valid intervals for conditions records.
+ * This class manages multiple ConditionsIntervalFinder instances and provides a unified interface for finding valid intervals.
+ */
 #include <vector>
 #include <memory>
 #include <unordered_map>

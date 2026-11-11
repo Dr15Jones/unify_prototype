@@ -1,5 +1,9 @@
 #ifndef TransitionHandling_FilesProcessor_h
 #define TransitionHandling_FilesProcessor_h
+/**
+ * Handles serializing the processing of file transitions and notifying dependent ConcurrentTransitionSchedulers of the new file transition.
+ * The file transition is only executed once all dependent ConcurrentTransitionSchedulers have completed their processing of their tasks associated with the file.
+ */
 
 #include <memory>
 #include <vector>

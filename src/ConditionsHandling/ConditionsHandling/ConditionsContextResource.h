@@ -1,6 +1,10 @@
 #ifndef ConditionsHandling_ConditionsContextResource_h
 #define ConditionsHandling_ConditionsContextResource_h
 
+/**
+ * A class for representing a context resource for conditions.
+ * This class holds a collection of conditions record resources for the given validity interval.
+ */
 #include <vector>
 #include <memory>
 

@@ -1,5 +1,8 @@
 #ifndef ConditionsHandling_ConcurrentIntervalScheduler_h
 #define ConditionsHandling_ConcurrentIntervalScheduler_h
+/* 
+ * A class for managing concurrent intervals in the conditions system for one Record type.
+ */
 #include "ConditionsDataModel/ConditionsRecordKey.h"
 #include "ConditionsHandling/ConcurrentIntervalID.h"
 #include "ConditionsHandling/ConditionsContextResource.h"
